@@ -1,13 +1,21 @@
-import jwt
+from json import JSONDecodeError
+import os, requests, environ, jwt
+from pathlib import Path
+
+from django.http import JsonResponse
 from rest_framework.views import APIView
 from .serializers import *
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer, TokenRefreshSerializer
 from rest_framework import status
 from rest_framework.response import Response
 from django.contrib.auth import authenticate
-from django.shortcuts import render, get_object_or_404
+from django.shortcuts import redirect, render, get_object_or_404
 from project.settings import SECRET_KEY
+from allauth.socialaccount.models import SocialAccount
 
+from dj_rest_auth.registration.views import SocialLoginView
+from allauth.socialaccount.providers.kakao import views as kakao_view
+from allauth.socialaccount.providers.oauth2.client import OAuth2Client
 
 class RegisterAPIView(APIView):
     def post(self, request):
@@ -134,3 +142,109 @@ class DeleteAccountAPIView(APIView):
                 {"message": "Unauthorized"}, 
                 status=status.HTTP_401_UNAUTHORIZED
             )
+        
+# 카카오 로그인
+BASE_DIR = Path(__file__).resolve().parent.parent
+env = environ.Env(DEBUG=(bool, False))
+environ.Env.read_env(os.path.join(BASE_DIR,'.env'))
+BASE_URL=env('BASE_URL')
+KAKAO_CALLBACK_URI = BASE_URL + '/api/accounts/kakao/callback'
+
+def kakao_login(request):
+    client_id = os.environ.get("SOCIAL_AUTH_KAKAO_CLIENT_ID")
+    return redirect(f"https://kauth.kakao.com/oauth/authorize?client_id={client_id}&redirect_uri={KAKAO_CALLBACK_URI}&response_type=code&scope=account_email,profile_nickname,profile_image")
+
+def kakao_callback(request):
+    client_id = os.environ.get("SOCIAL_AUTH_KAKAO_CLIENT_ID")
+    code = request.GET.get("code")
+
+    # Access Token 요청
+    token_request = requests.get(
+        f"https://kauth.kakao.com/oauth/token?grant_type=authorization_code"
+        f"&client_id={client_id}&redirect_uri={KAKAO_CALLBACK_URI}&code={code}"
+    )
+    token_response_json = token_request.json()
+
+    # 에러 발생 시 중단
+    if "error" in token_response_json:
+        return JsonResponse({'err_msg': 'failed to get access token'}, status=400)
+
+    access_token = token_response_json.get("access_token")
+    profile_request = requests.post(
+        "https://kapi.kakao.com/v2/user/me",
+        headers={"Authorization": f"Bearer {access_token}"},
+    )
+    profile_json = profile_request.json()
+
+    # 사용자 정보 가져오기
+    kakao_account = profile_json.get("kakao_account", {})
+    profile = kakao_account.get("profile", {})
+    email = kakao_account.get("email")
+    nickname = profile.get("nickname")
+
+    if not email:
+        return JsonResponse({'err_msg': 'email not provided'}, status=400)
+
+    # 유저 인증 or 생성
+    user, created = User.objects.get_or_create(email=email)
+
+    if created:
+        # 새 유저 생성 시 추가 정보 설정
+        user.user_name = nickname if nickname else None
+        user.set_unusable_password()
+        user.save()
+
+    # JWT 토큰 생성
+    token = TokenObtainPairSerializer.get_token(user)
+    refresh_token = str(token)
+    access_token = str(token.access_token)
+
+    response = JsonResponse({
+        "message": "success",
+        "token": {
+            "access": access_token,
+            "refresh": refresh_token,
+        }
+    })
+    response.set_cookie(
+        "access",
+        access_token,
+        httponly=True,
+        secure=True,  # HTTPS를 사용하는 경우
+        samesite="Lax",  # CSRF 공격 방지
+        max_age=60 * 60,  # 1시간 (초 단위)
+    )
+    response.set_cookie(
+        "refresh",
+        refresh_token,
+        httponly=True,
+        secure=True,  # HTTPS를 사용하는 경우
+        samesite="Lax",  # CSRF 공격 방지
+        max_age=7 * 24 * 60 * 60,  # 7일 (초 단위)
+    )
+    return response
+        
+class KakaoLogin(SocialLoginView):
+    adapter_class = kakao_view.KakaoOAuth2Adapter
+    callback_url = KAKAO_CALLBACK_URI
+    client_class = OAuth2Client
+
+    def post(self, request, *args, **kwargs):
+        response = super().post(request, *args, **kwargs)
+        
+        # 소셜 로그인 처리 후 유저 정보 가져오기
+        user = self.request.user
+        
+        # JWT 토큰 생성
+        token = TokenObtainPairSerializer.get_token(user)
+        refresh_token = str(token)
+        access_token = str(token.access_token)
+
+        # 토큰 포함한 응답 반환
+        response.data.update({
+            "token": {
+                "access": access_token,
+                "refresh": refresh_token,
+            }
+        })
+        return response
