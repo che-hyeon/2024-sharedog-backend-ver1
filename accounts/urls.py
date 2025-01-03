@@ -16,4 +16,7 @@ urlpatterns = [
     path("auth", AuthAPIView.as_view(), name="auth"),          # 유저 정보 확인
     path("delete-account", DeleteAccountAPIView.as_view(), name="delete_account"),
     path("auth/refresh", TokenRefreshView.as_view(), name="token_refresh"),
+    path('kakao/login', kakao_login, name='kakao_login'),
+    path('kakao/callback', kakao_callback, name='kakao_callback'),
+    path('kakao/login/finish', KakaoLogin.as_view(), name='kakao_login_todjango'),
 ]
