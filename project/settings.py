@@ -10,6 +10,7 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.1/ref/settings/
 """
 
+from datetime import timedelta
 from pathlib import Path
 import os, environ
 
@@ -49,8 +50,19 @@ INSTALLED_APPS = [
     'users',
 
     'rest_framework',
+    'rest_framework_simplejwt',
+    'rest_framework_simplejwt.token_blacklist',
+    'rest_framework.authtoken',
+    'dj_rest_auth',
+    'dj_rest_auth.registration',
+    'django.contrib.sites',
+    'allauth',
+    'allauth.account',
+    'allauth.socialaccount',
     'corsheaders'
 ]
+
+AUTH_USER_MODEL = 'accounts.User' 
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
@@ -63,6 +75,8 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+
+    'allauth.account.middleware.AccountMiddleware',
 ]
 
 ROOT_URLCONF = 'project.urls'
@@ -142,9 +156,30 @@ MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': [
+        'rest_framework_simplejwt.authentication.JWTAuthentication',
+    ],
+    'DEFAULT_PERMISSION_CLASSES': [
+        'rest_framework.permissions.AllowAny',
+    ]
+}
+
+SIMPLE_JWT = {
+    # 액세스 토큰 
+    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=600),
+    # 리프레시 토큰 유효기간 
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=14),
+    # 새 액세스 토큰 받을때 리프레시 토큰 발급   
+    'ROTATE_REFRESH_TOKENS': True,
+    #로그아웃후에 블랙리스트 처리                   
+    'BLACKLIST_AFTER_ROTATION': True,
+    #JWT 서명에 사용할 키
+    'SIGNING_KEY': SECRET_KEY,
+}
+
 CORS_ALLOW_ALL_ORIGINS = False
 CORS_ALLOW_CREDENTIALS = True
-
 CORS_ALLOWED_ORIGINS = [
     # 로컬 개발용 주소
     'http://localhost:3000',
