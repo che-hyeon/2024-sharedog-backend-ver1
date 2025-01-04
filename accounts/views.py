@@ -4,9 +4,10 @@ from pathlib import Path
 
 from django.http import JsonResponse
 from rest_framework.views import APIView
+from rest_framework.permissions import IsAuthenticated
+from rest_framework import viewsets, mixins, status
 from .serializers import *
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer, TokenRefreshSerializer
-from rest_framework import status
 from rest_framework.response import Response
 from django.contrib.auth import authenticate
 from django.shortcuts import redirect, render, get_object_or_404
@@ -248,3 +249,35 @@ class KakaoLogin(SocialLoginView):
             }
         })
         return response
+    
+class DogViewSet(viewsets.ModelViewSet):
+    queryset = Dog.objects.all()
+    serializer_class = DogSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        # 현재 사용자와 관련된 강아지들만 반환
+        return Dog.objects.filter(user=self.request.user)
+
+    def perform_create(self, serializer):
+        # 새로운 강아지 등록 시 처리
+        user = self.request.user
+        existing_dogs = Dog.objects.filter(user=user)
+
+        if not existing_dogs.exists():
+            # 첫 번째 강아지 등록 시 represent=True로 설정
+            serializer.save(user=user, represent=True)
+        else:
+            if serializer.validated_data.get('represent', False):
+                # represent=True 요청 시 기존 강아지들의 represent 값을 False로 변경
+                existing_dogs.update(represent=False)
+            serializer.save(user=user)
+
+    def perform_update(self, serializer):
+        # 강아지 정보 업데이트 시 처리
+        instance = self.get_object()
+
+        if serializer.validated_data.get('represent', False):
+            # represent=True 요청 시, 해당 유저의 다른 강아지 represent를 False로 설정
+            Dog.objects.filter(user=instance.user).exclude(id=instance.id).update(represent=False)
+        serializer.save()

@@ -45,3 +45,20 @@ class User(AbstractBaseUser, PermissionsMixin):
 
 	# 사용자의 username field는 email으로 설정 (이메일로 로그인)
     USERNAME_FIELD = 'email'
+
+def image_upload_path(instance, filename):
+    return f'{instance.pk}/{filename}'
+
+class Dog(models.Model):
+    id = models.AutoField(primary_key=True)
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    dog_name = models.CharField(max_length=30)
+    dog_age = models.PositiveIntegerField()
+    weight = models.CharField(max_length=30)
+    gender = models.CharField(max_length=30)
+    neuter = models.BooleanField()
+    blood = models.CharField(max_length=30)
+    dog_image = models.ImageField(upload_to=image_upload_path, blank=True, null=True)
+    represent = models.BooleanField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)

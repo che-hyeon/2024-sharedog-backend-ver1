@@ -1,4 +1,4 @@
-from .models import User
+from .models import *
 from rest_framework import serializers
 
 class UserSerializer(serializers.ModelSerializer):
@@ -15,3 +15,18 @@ class UserSerializer(serializers.ModelSerializer):
         )
         user.save()
         return user
+    
+class DogSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Dog
+        fields = '__all__'
+        read_only_fields = [
+            'id',
+            'user',
+            'created_at',
+            'updated_at',
+        ]
+    user = serializers.SerializerMethodField(read_only=True)
+    def get_user(self, instance):
+        user = instance.user
+        return user.user_name
