@@ -9,6 +9,9 @@ from rest_framework_simplejwt.views import TokenRefreshView
 
 app_name = "accounts"
 
+dog_router = routers.SimpleRouter(trailing_slash=False)
+dog_router.register('dog', DogViewSet, basename='dog')
+
 urlpatterns = [
     path("signup", RegisterAPIView.as_view(), name="signup"),  # 회원가입
     path("login", LoginAPIView.as_view(), name="login"),       # 로그인
@@ -19,4 +22,5 @@ urlpatterns = [
     path('kakao/login', kakao_login, name='kakao_login'),
     path('kakao/callback', kakao_callback, name='kakao_callback'),
     path('kakao/login/finish', KakaoLogin.as_view(), name='kakao_login_todjango'),
+    path('', include(dog_router.urls)),
 ]
