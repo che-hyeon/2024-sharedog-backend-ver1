@@ -1,8 +1,9 @@
 from rest_framework import viewsets
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
-from accounts.models import Dog
-from .serializers import AddDogSerializer
+from accounts.models import Dog,User
+from .serializers import AddDogSerializer, MyPageSerializer
+from rest_framework.viewsets import ReadOnlyModelViewSet
 
 class AddDogViewSet(viewsets.ModelViewSet):
     queryset = Dog.objects.all()
@@ -34,3 +35,16 @@ class AddDogViewSet(viewsets.ModelViewSet):
             # 현재 사용자의 다른 강아지의 represent를 False로 설정
             Dog.objects.filter(user=user, represent=True).update(represent=False)
         serializer.save()
+
+class MyPageViewSet(ReadOnlyModelViewSet):
+    """
+    사용자 정보와 represent=True 강아지 이미지를 반환하는 뷰셋
+    """
+    queryset = User.objects.all()
+    serializer_class = MyPageSerializer
+
+    def get_queryset(self):
+        """
+        현재 로그인한 사용자만 반환
+        """
+        return User.objects.filter(id=self.request.user.id)
