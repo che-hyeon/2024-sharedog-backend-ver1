@@ -26,6 +26,9 @@ class DogSerializer(serializers.ModelSerializer):
             'created_at',
             'updated_at',
         ]
+    
+    dog_image = serializers.ImageField(use_url=True, required=False)
+
     user = serializers.SerializerMethodField(read_only=True)
     def get_user(self, instance):
         user = instance.user
