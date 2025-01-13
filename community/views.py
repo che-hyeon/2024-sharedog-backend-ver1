@@ -6,11 +6,19 @@ from django.shortcuts import get_object_or_404, render
 from rest_framework import viewsets, mixins
 from .models import *
 from .serializers import *
+from .permissions import *
+from rest_framework.permissions import IsAuthenticated
 
 # Create your views here.
 
 class PostViewSet(viewsets.ModelViewSet):
     queryset = Post.objects.all().order_by('-created_at')
+
+    def get_permissions(self):
+        if self.action in ["update", "destroy", "partial_update"]:
+            return [IsOwnerOrReadOnly()]
+        return []
+
     def get_serializer_class(self):
         if self.action == "list":
             return PostListSerializer
@@ -50,6 +58,7 @@ class PostViewSet(viewsets.ModelViewSet):
 class CommentViewSet(viewsets.ModelViewSet):
     queryset = Comment.objects.all()
     serializer_class = CommentSerializer
+    permission_classes = [IsAuthenticated]
 
     def list(self, request, post_id=None):
         post = get_object_or_404(Post, id=post_id)

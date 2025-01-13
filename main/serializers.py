@@ -49,12 +49,15 @@ class MainSerializer(serializers.ModelSerializer):
         request = self.context.get('request', None)
         region = request.query_params.get('region', None)
 
-        posts = Post.objects.filter(category="긴급헌혈").order_by('-created_at')
-        if region:
-            posts = posts.filter(region=region).order_by('-created_at')
-        posts = posts[:3]
-        serializer = MainPostSerializer(posts, many=True)
-        return serializer.data
+        if not request or not hasattr(request, 'user') or not request.user.is_authenticated:
+            return None
+        else:
+            posts = Post.objects.filter(category="긴급헌혈").order_by('-created_at')
+            if region:
+                posts = posts.filter(region=region).order_by('-created_at')
+            posts = posts[:3]
+            serializer = MainPostSerializer(posts, many=True)
+            return serializer.data
     
     profile_image = serializers.SerializerMethodField(read_only=True)
     def get_profile_image(self, instance):
@@ -72,3 +75,12 @@ class MainSerializer(serializers.ModelSerializer):
             return DogSerializer(dog, context=self.context).data.get('dog_image', None)
         
         return None
+    
+    user_name = serializers.SerializerMethodField(read_only=True)
+    def get_user_name(self, instance):
+        request = self.context.get('request', None)
+        
+        if not request or not hasattr(request, 'user') or not request.user.is_authenticated:
+            return None
+        else:
+            return request.user.user_name
