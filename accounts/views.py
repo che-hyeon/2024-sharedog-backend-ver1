@@ -119,13 +119,11 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 env = environ.Env(DEBUG=(bool, False))
 environ.Env.read_env(os.path.join(BASE_DIR,'.env'))
 BASE_URL=env('BASE_URL')
-FRONT_URL=env('FRONT_URL')
-KAKAO_CALLBACK_URI = BASE_URL + 'api/accounts/kakao/callback'
-FRONT_CALLBACK_URI = FRONT_URL + '/kakao/callback'
+KAKAO_CALLBACK_URI = BASE_URL + '/api/accounts/kakao/callback'
 
 def kakao_login(request):
     client_id = os.environ.get("SOCIAL_AUTH_KAKAO_CLIENT_ID")
-    return redirect(f"https://kauth.kakao.com/oauth/authorize?client_id={client_id}&redirect_uri={FRONT_CALLBACK_URI}&response_type=code&scope=account_email,profile_nickname,profile_image")
+    return redirect(f"https://kauth.kakao.com/oauth/authorize?client_id={client_id}&redirect_uri={KAKAO_CALLBACK_URI}&response_type=code&scope=account_email,profile_nickname,profile_image")
 
 def kakao_callback(request):
     client_id = os.environ.get("SOCIAL_AUTH_KAKAO_CLIENT_ID")
@@ -179,22 +177,6 @@ def kakao_callback(request):
             "refresh": refresh_token,
         }
     })
-    response.set_cookie(
-        "access",
-        access_token,
-        httponly=True,
-        secure=True,  # HTTPS를 사용하는 경우
-        samesite="Lax",  # CSRF 공격 방지
-        max_age=60 * 60,  # 1시간 (초 단위)
-    )
-    response.set_cookie(
-        "refresh",
-        refresh_token,
-        httponly=True,
-        secure=True,  # HTTPS를 사용하는 경우
-        samesite="Lax",  # CSRF 공격 방지
-        max_age=7 * 24 * 60 * 60,  # 7일 (초 단위)
-    )
     return response
         
 class KakaoLogin(SocialLoginView):
