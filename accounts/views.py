@@ -7,6 +7,7 @@ from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated
 from rest_framework import viewsets, mixins, status
 from .serializers import *
+from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer, TokenRefreshSerializer
 from rest_framework.response import Response
 from django.contrib.auth import authenticate
@@ -28,23 +29,18 @@ class RegisterAPIView(APIView):
             token = TokenObtainPairSerializer.get_token(user)
             refresh_token = str(token)
             access_token = str(token.access_token)
-            res = Response(
+            
+            return Response(
                 {
                     "user": serializer.data,
-                    "success": "회원가입에 성공하였습니다.",
+                    "message": "회원가입에 성공하였습니다.",
                     "token": {
                         "access": access_token,
                         "refresh": refresh_token,
                     },
                 },
-                status=status.HTTP_200_OK,
+                status=status.HTTP_201_CREATED,
             )
-            
-            # jwt 토큰 => 쿠키에 저장
-            res.set_cookie("access", access_token, httponly=True)
-            res.set_cookie("refresh", refresh_token, httponly=True)
-            
-            return res
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
@@ -56,14 +52,16 @@ class LoginAPIView(APIView):
         )
         if user is not None:
             serializer = UserSerializer(user)
+            
             # jwt 토큰 생성
             token = TokenObtainPairSerializer.get_token(user)
             refresh_token = str(token)
             access_token = str(token.access_token)
-            res = Response(
+            
+            return Response(
                 {
                     "user": serializer.data,
-                    "message": "login success",
+                    "message": "로그인 성공",
                     "token": {
                         "access": access_token,
                         "refresh": refresh_token,
@@ -71,57 +69,32 @@ class LoginAPIView(APIView):
                 },
                 status=status.HTTP_200_OK,
             )
-            # jwt 토큰 => 쿠키에 저장
-            res.set_cookie("access", access_token, httponly=True)
-            res.set_cookie("refresh", refresh_token, httponly=True)
-            return res
         else:
-            return Response({"error": "ⓘ 아이디와 비밀번호를 정확히 입력해주세요."}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"error": "아이디와 비밀번호를 정확히 입력해주세요."}, status=status.HTTP_400_BAD_REQUEST)
 
 
 class LogoutAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
     def post(self, request):
-        # 쿠키에 저장된 토큰 삭제 => 로그아웃 처리
-        access = request.COOKIES.get('access', None)
-        if access is not None:
-            response = Response(
-                {"success": "로그아웃 성공!"},
-                status=status.HTTP_202_ACCEPTED
-            )
-            response.delete_cookie("access")
-            response.delete_cookie("refresh")
-        else:
-            response = Response({"detail": "자격 인증데이터(authentication credentials)가 제공되지 않았습니다."}, status=status.HTTP_400_BAD_REQUEST)
-        return response
+        try:
+            # Refresh token 블랙리스트 처리 (필요 시 구현)
+            refresh_token = request.data.get("refresh")
+            if refresh_token:
+                token = RefreshToken(refresh_token)
+                token.blacklist()  # requires `django-rest-framework-simplejwt` with blacklist enabled
+
+            return Response({"message": "로그아웃 성공"}, status=status.HTTP_205_RESET_CONTENT)
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
 class AuthAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
     def get(self, request):
-        try:
-            # access token을 decode 해서 유저 id 추출
-            access = request.COOKIES['access']
-            payload = jwt.decode(access, SECRET_KEY, algorithms=['HS256'])
-            pk = payload.get('user_id')
-            user = get_object_or_404(User, pk=pk)
-            serializer = UserSerializer(instance=user)
-            return Response(serializer.data, status=status.HTTP_200_OK)
-        except jwt.exceptions.ExpiredSignatureError:
-            # 토큰 만료 시 토큰 갱신
-            data = {'refresh': request.COOKIES.get('refresh', None)}
-            serializer = TokenRefreshSerializer(data=data)
-            if serializer.is_valid(raise_exception=True):
-                access = serializer.data.get('access', None)
-                refresh = serializer.data.get('refresh', None)
-                payload = jwt.decode(access, SECRET_KEY, algorithms=['HS256'])
-                pk = payload.get('user_id')
-                user = get_object_or_404(User, pk=pk)
-                serializer = UserSerializer(instance=user)
-                res = Response(serializer.data, status=status.HTTP_200_OK)
-                res.set_cookie('access', access)
-                res.set_cookie('refresh', refresh)
-                return res
-            raise jwt.exceptions.InvalidTokenError
-        except jwt.exceptions.InvalidTokenError:
-            return Response({"message": "Invalid token"}, status=status.HTTP_400_BAD_REQUEST)
+        user = request.user
+        serializer = UserSerializer(user)
+        return Response(serializer.data, status=status.HTTP_200_OK)
 
 class DeleteAccountAPIView(APIView):
     def delete(self, request):
@@ -130,13 +103,10 @@ class DeleteAccountAPIView(APIView):
             user = request.user
             user.delete()
             
-            # 관련 쿠키 삭제
             response = Response(
                 {"success": "계정이 삭제되었습니다."},
                 status=status.HTTP_204_NO_CONTENT
             )
-            response.delete_cookie("access")
-            response.delete_cookie("refresh")
             return response
         else:
             return Response(
@@ -149,11 +119,13 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 env = environ.Env(DEBUG=(bool, False))
 environ.Env.read_env(os.path.join(BASE_DIR,'.env'))
 BASE_URL=env('BASE_URL')
-KAKAO_CALLBACK_URI = BASE_URL + '/api/accounts/kakao/callback'
+FRONT_URL=env('FRONT_URL')
+KAKAO_CALLBACK_URI = BASE_URL + 'api/accounts/kakao/callback'
+FRONT_CALLBACK_URI = FRONT_URL + '/kakao/callback'
 
 def kakao_login(request):
     client_id = os.environ.get("SOCIAL_AUTH_KAKAO_CLIENT_ID")
-    return redirect(f"https://kauth.kakao.com/oauth/authorize?client_id={client_id}&redirect_uri={KAKAO_CALLBACK_URI}&response_type=code&scope=account_email,profile_nickname,profile_image")
+    return redirect(f"https://kauth.kakao.com/oauth/authorize?client_id={client_id}&redirect_uri={FRONT_CALLBACK_URI}&response_type=code&scope=account_email,profile_nickname,profile_image")
 
 def kakao_callback(request):
     client_id = os.environ.get("SOCIAL_AUTH_KAKAO_CLIENT_ID")
