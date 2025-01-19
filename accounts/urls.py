@@ -19,8 +19,8 @@ urlpatterns = [
     path("auth", AuthAPIView.as_view(), name="auth"),          # 유저 정보 확인
     path("delete-account", DeleteAccountAPIView.as_view(), name="delete_account"),
     path("auth/refresh", TokenRefreshView.as_view(), name="token_refresh"),
-    path('kakao/login', kakao_login, name='kakao_login'),
-    path('kakao/callback', kakao_callback, name='kakao_callback'),
-    path('kakao/login/finish', KakaoLogin.as_view(), name='kakao_login_todjango'),
+    path('kakao/login', kakao_login, name='kakao_login'),  # 카카오 로그인
+    path('kakao/callback', kakao_callback, name='kakao_callback'),  # 카카오 인증 후 프론트 리다이렉트
+    path('kakao/exchange-token', exchange_token, name='kakao_exchange_token'),  # JWT 토큰 발급
     path('', include(dog_router.urls)),
 ]
