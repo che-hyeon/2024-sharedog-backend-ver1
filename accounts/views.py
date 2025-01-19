@@ -191,6 +191,7 @@ def exchange_token(request):
 
     return JsonResponse({
         "message": "success",
+        "is_signed": created,
         "token": {
             "access": access_token,
             "refresh": refresh_token,
