@@ -2,6 +2,9 @@ from json import JSONDecodeError
 import os, requests, environ, jwt
 from pathlib import Path
 
+from rest_framework.permissions import AllowAny
+
+from rest_framework.decorators import api_view, permission_classes
 from django.http import JsonResponse
 from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated
@@ -120,16 +123,32 @@ env = environ.Env(DEBUG=(bool, False))
 environ.Env.read_env(os.path.join(BASE_DIR,'.env'))
 BASE_URL=env('BASE_URL')
 FRONT_URL=env('FRONT_URL')
-KAKAO_CALLBACK_URI = BASE_URL + 'api/accounts/kakao/callback'
-FRONT_CALLBACK_URI = FRONT_URL + '/kakao/callback'
+FRONT_REDIRECT_URI = FRONT_URL + '/kakao/callback'
+KAKAO_CALLBACK_URI = BASE_URL + '/api/accounts/kakao/callback'
 
 def kakao_login(request):
     client_id = os.environ.get("SOCIAL_AUTH_KAKAO_CLIENT_ID")
-    return redirect(f"https://kauth.kakao.com/oauth/authorize?client_id={client_id}&redirect_uri={FRONT_CALLBACK_URI}&response_type=code&scope=account_email,profile_nickname,profile_image")
+    return redirect(f"https://kauth.kakao.com/oauth/authorize?client_id={client_id}&redirect_uri={KAKAO_CALLBACK_URI}&response_type=code&scope=account_email,profile_nickname,profile_image")
 
 def kakao_callback(request):
     client_id = os.environ.get("SOCIAL_AUTH_KAKAO_CLIENT_ID")
     code = request.GET.get("code")
+
+    if not code:
+        return JsonResponse({"err_msg": "Authorization code not provided"}, status=400)
+
+    # 인증 코드를 프론트엔드로 전달
+    redirect_url = f"{FRONT_REDIRECT_URI}?code={code}"
+    return redirect(redirect_url)
+
+@api_view(["POST"])
+@permission_classes([AllowAny])
+def exchange_token(request):
+    client_id = os.environ.get("SOCIAL_AUTH_KAKAO_CLIENT_ID")
+    code = request.data.get("code")
+
+    if not code:
+        return JsonResponse({"err_msg": "Code not provided"}, status=400)
 
     # Access Token 요청
     token_request = requests.get(
@@ -138,9 +157,8 @@ def kakao_callback(request):
     )
     token_response_json = token_request.json()
 
-    # 에러 발생 시 중단
     if "error" in token_response_json:
-        return JsonResponse({'err_msg': 'failed to get access token'}, status=400)
+        return JsonResponse({"err_msg": "Failed to get access token"}, status=400)
 
     access_token = token_response_json.get("access_token")
     profile_request = requests.post(
@@ -156,13 +174,12 @@ def kakao_callback(request):
     nickname = profile.get("nickname")
 
     if not email:
-        return JsonResponse({'err_msg': 'email not provided'}, status=400)
+        return JsonResponse({"err_msg": "Email not provided"}, status=400)
 
     # 유저 인증 or 생성
     user, created = User.objects.get_or_create(email=email)
 
     if created:
-        # 새 유저 생성 시 추가 정보 설정
         user.user_name = nickname if nickname else None
         user.set_unusable_password()
         user.save()
@@ -172,30 +189,13 @@ def kakao_callback(request):
     refresh_token = str(token)
     access_token = str(token.access_token)
 
-    response = JsonResponse({
+    return JsonResponse({
         "message": "success",
         "token": {
             "access": access_token,
             "refresh": refresh_token,
         }
     })
-    response.set_cookie(
-        "access",
-        access_token,
-        httponly=True,
-        secure=True,  # HTTPS를 사용하는 경우
-        samesite="Lax",  # CSRF 공격 방지
-        max_age=60 * 60,  # 1시간 (초 단위)
-    )
-    response.set_cookie(
-        "refresh",
-        refresh_token,
-        httponly=True,
-        secure=True,  # HTTPS를 사용하는 경우
-        samesite="Lax",  # CSRF 공격 방지
-        max_age=7 * 24 * 60 * 60,  # 7일 (초 단위)
-    )
-    return response
         
 class KakaoLogin(SocialLoginView):
     adapter_class = kakao_view.KakaoOAuth2Adapter
