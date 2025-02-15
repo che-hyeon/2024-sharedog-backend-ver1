@@ -191,8 +191,12 @@ SIMPLE_JWT = {
 
 CORS_ALLOW_ALL_ORIGINS = False
 CORS_ALLOW_CREDENTIALS = True
+CSRF_TRUSTED_ORIGINS = [
+    "https://sharedog.shop"
+]
 CORS_ALLOWED_ORIGINS = [
     # 로컬 개발용 주소
+    'http://sharedog.shop',
     'http://localhost:3000',
     'http://localhost:5173',
     'http://127.0.0.1:3000',
