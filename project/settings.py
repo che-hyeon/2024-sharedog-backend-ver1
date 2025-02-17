@@ -199,7 +199,12 @@ CSRF_TRUSTED_ORIGINS = [
     "http://localhost:3000",
     "http://localhost:5173",
     "http://127.0.0.1:3000",
-    "http://127.0.0.1:5173"
+    "http://127.0.0.1:5173",
+
+    "https://localhost:3000",
+    "https://localhost:5173",
+    "https://127.0.0.1:3000",
+    "https://127.0.0.1:5173"
 ]
 CORS_ALLOWED_ORIGINS = [
     # 로컬 개발용 주소
@@ -213,4 +218,9 @@ CORS_ALLOWED_ORIGINS = [
     # 프론트엔드 도메인 또는 IP 주소
     'https://프론트주소',
     'http://프론트주소:포트번호',
+
+    'https://localhost:3000',
+    'https://localhost:5173',
+    'https://127.0.0.1:3000',
+    'https://127.0.0.1:5173',
 ]
