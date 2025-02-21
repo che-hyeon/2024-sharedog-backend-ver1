@@ -2,6 +2,7 @@ from rest_framework import serializers
 from accounts.models import *
 from accounts.serializers import *
 from community.serializers import *
+from tests.models import TestCheck
 
 class MainPostSerializer(serializers.ModelSerializer):
     class Meta:
@@ -42,6 +43,7 @@ class MainSerializer(serializers.ModelSerializer):
             'user_name',
             'profile_image',
             'posts',
+            'is_test'
         ]
     
     posts = serializers.SerializerMethodField(read_only=True)
@@ -84,3 +86,17 @@ class MainSerializer(serializers.ModelSerializer):
             return None
         else:
             return request.user.user_name
+        
+    is_test = serializers.SerializerMethodField(read_only=True)
+    def get_is_test(self, instance):
+        request = self.context.get('request', None)
+        
+        if not request or not hasattr(request, 'user') or not request.user.is_authenticated:
+            return None
+        
+        user = request.user
+        latest_test_check = TestCheck.objects.filter(user=user).order_by('-id').first()  # 최신 값 가져오기
+        
+        if latest_test_check:
+            return latest_test_check.is_test  # 최신 is_test 값 반환
+        return False  # 해당 사용자의 기록이 없으면 None 반환
