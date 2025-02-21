@@ -17,3 +17,13 @@ class TotaltestSerializer(serializers.ModelSerializer):
         user 필드의 user_name을 반환
         """
         return obj.user.user_name if obj.user else None
+    
+class TestCheckSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = TestCheck
+        fields = ['id', 'user', 'is_test']
+        read_only_fields = ['id', 'user']
+    
+    user = serializers.SerializerMethodField(read_only=True)
+    def get_user(self, instance):
+        return instance.user.user_name if instance.user else None
