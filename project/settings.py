@@ -36,6 +36,8 @@ ALLOWED_HOSTS = ['*']
 # Application definition
 
 INSTALLED_APPS = [
+    'channels',
+    'daphne',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -48,7 +50,8 @@ INSTALLED_APPS = [
     'main',
     'tests',
     'users',
-
+    'chat',
+    
     'rest_framework',
     'rest_framework_simplejwt',
     'rest_framework_simplejwt.token_blacklist',
@@ -109,7 +112,16 @@ TEMPLATES = [
 ]
 
 WSGI_APPLICATION = 'project.wsgi.application'
+ASGI_APPLICATION = 'project.asgi.application'
 
+CHANNEL_LAYERS = {
+    'default': {
+        'BACKEND': 'channels_redis.core.RedisChannelLayer',
+        'CONFIG': {
+            "hosts": [(os.environ.get('REDIS_HOST', 'localhost'), 6379)],
+        },
+    },
+}
 
 # Database
 # https://docs.djangoproject.com/en/5.1/ref/settings/#databases
@@ -204,7 +216,9 @@ CSRF_TRUSTED_ORIGINS = [
     "https://localhost:3000",
     "https://localhost:5173",
     "https://127.0.0.1:3000",
-    "https://127.0.0.1:5173"
+    "https://127.0.0.1:5173",
+
+    'https://2024-sharedog-frontend.vercel.app'
 ]
 CORS_ALLOWED_ORIGINS = [
     # 로컬 개발용 주소
@@ -216,7 +230,7 @@ CORS_ALLOWED_ORIGINS = [
     'http://127.0.0.1:5173',
 
     # 프론트엔드 도메인 또는 IP 주소
-    'https://프론트주소',
+    'https://2024-sharedog-frontend.vercel.app',
     'http://프론트주소:포트번호',
 
     'https://localhost:3000',
