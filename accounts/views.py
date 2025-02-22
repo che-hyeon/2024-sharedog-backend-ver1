@@ -254,3 +254,12 @@ class DogViewSet(viewsets.ModelViewSet):
             # represent=True 요청 시, 해당 유저의 다른 강아지 represent를 False로 설정
             Dog.objects.filter(user=instance.user).exclude(id=instance.id).update(represent=False)
         serializer.save()
+
+class CheckEmailExistsView(APIView):
+    def post(self, request):
+        email = request.data.get("email")
+        if not email:
+            return Response({"error": "Email is required"}, status=status.HTTP_400_BAD_REQUEST)
+
+        exists = User.objects.filter(email=email).exists()
+        return Response({"exists": exists}, status=status.HTTP_200_OK)
