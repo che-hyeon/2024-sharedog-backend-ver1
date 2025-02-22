@@ -19,7 +19,6 @@ class MainPostSerializer(serializers.ModelSerializer):
             'updated_at',
         ]
         read_only_fields = fields
-    
     image_1 = serializers.ImageField(use_url=True, required=False)
 
     created_at =serializers.SerializerMethodField(read_only=True)
@@ -58,7 +57,7 @@ class MainSerializer(serializers.ModelSerializer):
             if region:
                 posts = posts.filter(region=region).order_by('-created_at')
             posts = posts[:3]
-            serializer = MainPostSerializer(posts, many=True)
+            serializer = MainPostSerializer(posts, many=True, context=self.context)
             return serializer.data
     
     profile_image = serializers.SerializerMethodField(read_only=True)
