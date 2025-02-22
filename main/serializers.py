@@ -19,22 +19,7 @@ class MainPostSerializer(serializers.ModelSerializer):
             'updated_at',
         ]
         read_only_fields = fields
-    
-    image_1 = serializers.SerializerMethodField()
-    def get_image_1(self, instance):
-        request = self.context.get('request', None)
-        
-        if instance.image_1:
-            if request:
-                absolute_url = request.build_absolute_uri(instance.image_1.url)
-                print(f"[DEBUG] 절대 URL 변환 결과: {absolute_url}")  # 디버깅 출력
-                return absolute_url
-            print(f"[DEBUG] 상대 URL 반환: {instance.image_1.url}")
-            return instance.image_1.url
-        
-        print("[DEBUG] 이미지 없음")
-        return None
-
+    image_1 = serializers.ImageField(use_url=True, required=False)
 
     created_at =serializers.SerializerMethodField(read_only=True)
     def get_created_at(self, instance):
