@@ -1,5 +1,6 @@
 from django.db import models
 from accounts.models import User
+from django.core.exceptions import ValidationError
 
 # Create your models here.
 
@@ -26,3 +27,26 @@ class Message(models.Model):
 
     def __str__(self):
         return f"{self.sender.email}: {self.text[:30]}"
+    
+class Reservation(models.Model):
+    id = models.AutoField(primary_key=True)
+    day = models.DateField()
+    time = models.TimeField()
+    place = models.CharField(max_length=100)
+    user1 = models.ForeignKey(User, on_delete=models.CASCADE, related_name="reservations_as_user1")
+    user2 = models.ForeignKey(User, on_delete=models.CASCADE, related_name="reservations_as_user2")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def clean(self):
+        """user1과 user2가 같으면 안 됨"""
+        if self.user1 == self.user2:
+            raise ValidationError("두 사람은 서로 다른 사람이어야 합니다.")
+
+    def save(self, *args, **kwargs):
+        """저장 전에 clean() 검증 실행"""
+        self.clean()
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f"예약: {self.day} {self.time} - {self.place} ({self.user1} & {self.user2})"

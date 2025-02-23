@@ -1,14 +1,16 @@
-from rest_framework import generics, serializers, status
+from rest_framework import viewsets, generics, serializers, status
 from rest_framework.response import Response
-from .models import ChatRoom, Message, User
-from .serializers import ChatRoomSerializer, MessageSerializer
+from .models import ChatRoom, Message, User, Reservation
+from .serializers import ChatRoomSerializer, MessageSerializer, ReservationSerializer
 from rest_framework.exceptions import ValidationError
+from rest_framework.permissions import IsAuthenticated
 from django.http import Http404
 from django.db.models import Count
 from django.conf import settings
 from django.utils.timezone import get_current_timezone
 from collections import defaultdict
 from rest_framework.views import APIView
+from django.db.models import Q
 
 class ImmediateResponseException(Exception):
     def __init__(self, response):
@@ -86,3 +88,23 @@ class MessageListView(APIView):
 
         # 반환 형태 정리
         return [{"date": date, "messages": msgs} for date, msgs in grouped_messages.items()]
+
+class ReservationViewSet(viewsets.ModelViewSet):
+    queryset = Reservation.objects.all()
+    serializer_class = ReservationSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        """현재 로그인한 사용자가 포함된 예약만 조회"""
+        user = self.request.user
+        return Reservation.objects.filter(Q(user1=user) | Q(user2=user))
+
+    def perform_create(self, serializer):
+        """예약 생성 시 user1을 현재 로그인한 사용자로 설정"""
+        user1 = self.request.user
+        user2 = serializer.validated_data.get("user2")
+
+        if user1 == user2:
+            raise ValidationError("두 사람은 서로 다른 사람이어야 합니다.")
+
+        serializer.save(user1=user1)
