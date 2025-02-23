@@ -1,12 +1,12 @@
 from rest_framework import serializers
-from .models import ChatRoom, Message, User
+from .models import ChatRoom, Message, User, Reservation
 from accounts.models import User, Dog
 from accounts.serializers import DogSerializer
 from datetime import datetime, timedelta
 from datetime import datetime, timedelta
 from django.utils.timezone import get_current_timezone
 from collections import defaultdict
-
+import locale
 
 class MessageSerializer(serializers.ModelSerializer):
     formatted_time = serializers.SerializerMethodField()
@@ -126,3 +126,26 @@ class ChatRoomSerializer(serializers.ModelSerializer):
                 if dog:
                     return DogSerializer(dog, context=self.context).data.get('dog_image', None)
         return None
+
+class ReservationSerializer(serializers.ModelSerializer):
+    day = serializers.DateField(format="%Y-%m-%d")  # 날짜 포맷 지정
+    time = serializers.TimeField(format="%H:%M")  # 시간 포맷 지정
+
+    class Meta:
+        model = Reservation
+        fields = '__all__'
+        read_only_fields = ['id', 'user1', 'created_at', 'updated_at']
+
+    day_display = serializers.SerializerMethodField()
+    time_display = serializers.SerializerMethodField()
+    def get_day_display(self, obj):
+        """0000년 00월 00일 0요일 형식으로 반환 (한글 요일)"""
+        return obj.day.strftime("%m월 %d일 %a요일").replace("Mon", "월").replace("Tue", "화").replace("Wed", "수").replace("Thu", "목").replace("Fri", "금").replace("Sat", "토").replace("Sun", "일")
+
+    def get_time_display(self, obj):
+        """오전/오후 00:00 형식으로 변환"""
+        hour = obj.time.hour
+        minute = obj.time.minute
+        period = "오전" if hour < 12 else "오후"
+        formatted_hour = hour if 1 <= hour <= 12 else (hour - 12 if hour > 12 else 12)
+        return f"{period} {formatted_hour}:{minute:02d}"
