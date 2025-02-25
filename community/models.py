@@ -62,3 +62,8 @@ class Comment(models.Model):
     content = models.CharField(max_length=200)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+
+class SearchHistory(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='search_histories')
+    keyword = models.CharField(max_length=255)
+    searched_at = models.DateTimeField(auto_now_add=True)
