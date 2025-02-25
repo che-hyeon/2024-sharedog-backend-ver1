@@ -5,4 +5,4 @@ from .models import *
 
 admin.site.register(ChatRoom)
 admin.site.register(Message)
-admin.site.register(Reservation)
+admin.site.register(Promise)

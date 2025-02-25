@@ -1,7 +1,7 @@
 from rest_framework import viewsets, generics, serializers, status
 from rest_framework.response import Response
-from .models import ChatRoom, Message, User, Reservation
-from .serializers import ChatRoomSerializer, MessageSerializer, ReservationSerializer
+from .models import ChatRoom, Message, User, Promise
+from .serializers import ChatRoomSerializer, MessageSerializer, PromiseSerializer
 from rest_framework.exceptions import ValidationError
 from rest_framework.permissions import IsAuthenticated
 from django.http import Http404
@@ -89,22 +89,12 @@ class MessageListView(APIView):
         # 반환 형태 정리
         return [{"date": date, "messages": msgs} for date, msgs in grouped_messages.items()]
 
-class ReservationViewSet(viewsets.ModelViewSet):
-    queryset = Reservation.objects.all()
-    serializer_class = ReservationSerializer
+class PromiseViewSet(viewsets.ModelViewSet):
+    queryset = Promise.objects.all()
+    serializer_class = PromiseSerializer
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
         """현재 로그인한 사용자가 포함된 예약만 조회"""
         user = self.request.user
-        return Reservation.objects.filter(Q(user1=user) | Q(user2=user))
-
-    def perform_create(self, serializer):
-        """예약 생성 시 user1을 현재 로그인한 사용자로 설정"""
-        user1 = self.request.user
-        user2 = serializer.validated_data.get("user2")
-
-        if user1 == user2:
-            raise ValidationError("두 사람은 서로 다른 사람이어야 합니다.")
-
-        serializer.save(user1=user1)
+        return Promise.objects.filter(Q(user1=user) | Q(user2=user))
