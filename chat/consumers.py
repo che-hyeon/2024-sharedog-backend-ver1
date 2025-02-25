@@ -29,15 +29,23 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
 
     async def receive_json(self, content):
         try:
-            message = content['message']
-            sender_email = content['sender_email']
+            # 현재 로그인한 유저 가져오기 (JWT 인증 기반)
+            user = self.scope["user"]
+            if user.is_anonymous:
+                raise ValueError("인증된 사용자만 메시지를 보낼 수 있습니다.")
             
+            sender_email = user.email  # JWT 인증을 통해 로그인한 유저의 이메일
+
+            message = content.get("message", "")
+
+            if not message:
+                raise ValueError("메시지가 비어 있습니다.")
+
             # 기존 room_id가 존재하는 경우, 새 메시지 저장
             if hasattr(self, 'room_id') and await self.check_room_exists(self.room_id):
                 room = await self.get_room_by_id(self.room_id)
-            
-            # 존재하지 않는 경우, 새 채팅방 생성
             else:
+                # 존재하지 않는 경우, 새 채팅방 생성
                 participant1_email = content.get('participant1_email')
                 participant2_email = content.get('participant2_email')
 
