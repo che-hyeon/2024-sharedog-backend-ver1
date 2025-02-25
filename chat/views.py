@@ -71,9 +71,35 @@ class MessageListView(APIView):
         if not messages.exists():
             raise Http404('해당 room_id로 메시지를 찾을 수 없습니다.')
 
+        # 현재 로그인한 사용자
+        current_user = request.user
+
+        # 채팅방 정보 가져오기
+        try:
+            chat_room = ChatRoom.objects.get(id=room_id)
+        except ChatRoom.DoesNotExist:
+            return Response({'detail': '채팅방을 찾을 수 없습니다.'}, status=status.HTTP_404_NOT_FOUND)
+
+        # 상대방 정보 가져오기
+        opponent = chat_room.participants.exclude(id=current_user.id).first()
+
+
+        user_info = {
+            "current_user": {
+                "user_id": current_user.id,
+                "email": current_user.email,
+                "name": current_user.user_name
+            },
+            "opponent": {
+                "user_id": opponent.id,
+                "email": opponent.email,
+                "name": opponent.user_name
+            }
+        }
+
         # 날짜별 메시지 그룹화
         grouped_messages = self.group_messages_by_date(messages, request)
-        return Response(grouped_messages)
+        return Response({"user_info": user_info, "messages_by_date": grouped_messages})
 
     def group_messages_by_date(self, messages, request):
         """메시지를 날짜별로 그룹화"""
@@ -88,6 +114,8 @@ class MessageListView(APIView):
 
         # 반환 형태 정리
         return [{"date": date, "messages": msgs} for date, msgs in grouped_messages.items()]
+        
+
 
 class PromiseViewSet(viewsets.ModelViewSet):
     queryset = Promise.objects.all()
