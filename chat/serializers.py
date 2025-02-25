@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import ChatRoom, Message, User, Reservation
+from .models import ChatRoom, Message, User, Promise
 from accounts.models import User, Dog
 from accounts.serializers import DogSerializer
 from datetime import datetime, timedelta
@@ -8,15 +8,83 @@ from django.utils.timezone import get_current_timezone
 from collections import defaultdict
 import locale
 
+class PromiseSerializer(serializers.ModelSerializer):
+    day = serializers.DateField(format="%Y-%m-%d")  # 날짜 포맷 지정
+    time = serializers.TimeField(format="%H:%M")  # 시간 포맷 지정
+
+    class Meta:
+        model = Promise
+        fields = '__all__'
+        read_only_fields = ['id', 'user1', 'user2', 'created_at', 'updated_at']
+
+    day_display = serializers.SerializerMethodField()
+    time_display = serializers.SerializerMethodField()
+    def get_day_display(self, obj):
+        """0000년 00월 00일 0요일 형식으로 반환 (한글 요일)"""
+        return obj.day.strftime("%m월 %d일 %a요일").replace("Mon", "월").replace("Tue", "화").replace("Wed", "수").replace("Thu", "목").replace("Fri", "금").replace("Sat", "토").replace("Sun", "일")
+
+    def get_time_display(self, obj):
+        """오전/오후 00:00 형식으로 변환"""
+        hour = obj.time.hour
+        minute = obj.time.minute
+        period = "오전" if hour < 12 else "오후"
+        formatted_hour = hour if 1 <= hour <= 12 else (hour - 12 if hour > 12 else 12)
+        return f"{period} {formatted_hour}:{minute:02d}"
+
+    def create(self, validated_data):
+        request_user = self.context['request'].user  # 현재 요청한 유저 (예약 요청자)
+        room_id = self.context['view'].kwargs.get('room_id')  # URL에서 room_id 가져오기
+
+        # 채팅방이 존재하는지 확인
+        chat_room = ChatRoom.objects.filter(id=room_id).first()
+        if not chat_room:
+            raise serializers.ValidationError("채팅방이 존재하지 않습니다.")
+
+        # 채팅방 참여자 가져오기
+        participants = list(chat_room.participants.all())
+        if request_user not in participants:
+            raise serializers.ValidationError("채팅방에 참여한 사용자만 예약할 수 있습니다.")
+
+        # 상대방(user2) 찾기
+        user2 = participants[0] if participants[1] == request_user else participants[1]
+
+        # 예약 정보 자동 설정
+        validated_data['user1'] = request_user  # 예약 요청자
+        validated_data['user2'] = user2  # 상대방
+
+        promise = super().create(validated_data)
+
+        # 채팅방에 자동 메시지 추가
+        message_text = "헌혈 약속을 만들었어요"
+        Message.objects.create(
+            room=chat_room,
+            sender=request_user,  # 예약을 요청한 사람이 sender
+            text=message_text,
+            promise = promise
+        )
+
+        return promise
+    
 class MessageSerializer(serializers.ModelSerializer):
     formatted_time = serializers.SerializerMethodField()
     opponent_profile = serializers.SerializerMethodField()
     sender_name = serializers.SerializerMethodField()
     is_sender = serializers.SerializerMethodField()
+    promise_info = serializers.SerializerMethodField()
 
     class Meta:
         model = Message
-        fields = ["id", "text", "formatted_time", "room", "sender", "sender_name", "is_sender", "opponent_profile"]
+        fields = ["id",
+                "text",
+                "formatted_time",
+                "room",
+                "sender",
+                "sender_name",
+                "is_sender",
+                "opponent_profile",
+                "promise_info",
+                "promise"
+                ]
 
     def get_formatted_time(self, obj):
         """오전/오후 HH:MM 형식으로 변환"""
@@ -32,17 +100,24 @@ class MessageSerializer(serializers.ModelSerializer):
         if obj.sender != request_user:
             dog = Dog.objects.filter(user=obj.sender, represent=True).first()
             if dog:
-                return DogSerializer(dog, context=self.context).data.get('dog_image', None) # 상대방 프로필 데이터 추가
+                return DogSerializer(dog, context=self.context).data.get('dog_image', None)  # 상대방 프로필 데이터 추가
         return None  # 내가 작성한 메시지는 opponent_profile 없음
-    
+
     def get_sender_name(self, instance):
         sender = instance.sender
         return sender.user_name
-    
+
     def get_is_sender(self, instance):
         sender = instance.sender
         user = self.context["request"].user
         return sender == user
+
+    def get_promise_info(self, obj):
+        """메시지와 연결된 예약 정보를 반환"""
+        if obj.promise:
+            return PromiseSerializer(obj.promise, context=self.context).data
+        return None
+    
 class GroupedMessageSerializer(serializers.Serializer):
     """날짜별 메시지 그룹화"""
     date = serializers.CharField()
@@ -73,6 +148,7 @@ class ChatRoomSerializer(serializers.ModelSerializer):
     opponent_user_profile = serializers.SerializerMethodField()
     # messages = MessageSerializer(many=True, read_only=True, source="messages.all")
     participants = serializers.PrimaryKeyRelatedField(many=True, read_only=True)
+    is_promise = serializers.SerializerMethodField()
 
     class Meta:
         model = ChatRoom
@@ -82,7 +158,8 @@ class ChatRoomSerializer(serializers.ModelSerializer):
                 'latest_message_time',
                 'opponent_email',
                 'opponent_user',
-                'opponent_user_profile'
+                'opponent_user_profile',
+                'is_promise'
                 ]
     def get_latest_message(self, obj):
         latest_msg = Message.objects.filter(room=obj).order_by('-timestamp').first()
@@ -136,26 +213,7 @@ class ChatRoomSerializer(serializers.ModelSerializer):
                 if dog:
                     return DogSerializer(dog, context=self.context).data.get('dog_image', None)
         return None
-
-class ReservationSerializer(serializers.ModelSerializer):
-    day = serializers.DateField(format="%Y-%m-%d")  # 날짜 포맷 지정
-    time = serializers.TimeField(format="%H:%M")  # 시간 포맷 지정
-
-    class Meta:
-        model = Reservation
-        fields = '__all__'
-        read_only_fields = ['id', 'user1', 'created_at', 'updated_at']
-
-    day_display = serializers.SerializerMethodField()
-    time_display = serializers.SerializerMethodField()
-    def get_day_display(self, obj):
-        """0000년 00월 00일 0요일 형식으로 반환 (한글 요일)"""
-        return obj.day.strftime("%m월 %d일 %a요일").replace("Mon", "월").replace("Tue", "화").replace("Wed", "수").replace("Thu", "목").replace("Fri", "금").replace("Sat", "토").replace("Sun", "일")
-
-    def get_time_display(self, obj):
-        """오전/오후 00:00 형식으로 변환"""
-        hour = obj.time.hour
-        minute = obj.time.minute
-        period = "오전" if hour < 12 else "오후"
-        formatted_hour = hour if 1 <= hour <= 12 else (hour - 12 if hour > 12 else 12)
-        return f"{period} {formatted_hour}:{minute:02d}"
+    
+    def get_is_promise(self, instance):
+        latest_msg = Message.objects.filter(room=instance).order_by('-timestamp').first()
+        return latest_msg.promise is not None if latest_msg else False
