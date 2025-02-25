@@ -13,7 +13,12 @@ default_router.register('home', PostViewSet, basename='home')
 
 comment_router = routers.SimpleRouter(trailing_slash=False)
 comment_router.register('comments', CommentViewSet, basename='comments')
+
+search_history_router = routers.SimpleRouter(trailing_slash=False)
+search_history_router.register('search', SearchHistoryViewSet, basename='search')
+
 urlpatterns = [
     path('', include(default_router.urls)),
     path("home/<int:post_id>/", include(comment_router.urls)),
+    path('', include(search_history_router.urls))
 ]

@@ -187,3 +187,8 @@ class CommentSerializer(serializers.ModelSerializer):
             'created_at',
             'updated_at'
         ]
+
+class SearchHistorySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = SearchHistory
+        fields = ['id', 'keyword', 'searched_at']
