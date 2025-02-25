@@ -11,10 +11,12 @@ import locale
 class MessageSerializer(serializers.ModelSerializer):
     formatted_time = serializers.SerializerMethodField()
     opponent_profile = serializers.SerializerMethodField()
+    sender_name = serializers.SerializerMethodField()
+    is_sender = serializers.SerializerMethodField()
 
     class Meta:
         model = Message
-        fields = ["id", "text", "formatted_time", "room", "sender", "opponent_profile"]
+        fields = ["id", "text", "formatted_time", "room", "sender", "sender_name", "is_sender", "opponent_profile"]
 
     def get_formatted_time(self, obj):
         """오전/오후 HH:MM 형식으로 변환"""
@@ -32,7 +34,15 @@ class MessageSerializer(serializers.ModelSerializer):
             if dog:
                 return DogSerializer(dog, context=self.context).data.get('dog_image', None) # 상대방 프로필 데이터 추가
         return None  # 내가 작성한 메시지는 opponent_profile 없음
-
+    
+    def get_sender_name(self, instance):
+        sender = instance.sender
+        return sender.user_name
+    
+    def get_is_sender(self, instance):
+        sender = instance.sender
+        user = self.context["request"].user
+        return sender == user
 class GroupedMessageSerializer(serializers.Serializer):
     """날짜별 메시지 그룹화"""
     date = serializers.CharField()
