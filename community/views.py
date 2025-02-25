@@ -8,6 +8,7 @@ from .models import *
 from .serializers import *
 from .permissions import *
 from rest_framework.permissions import IsAuthenticated
+from django.utils import timezone
 
 # Create your views here.
 
@@ -38,6 +39,26 @@ class PostViewSet(viewsets.ModelViewSet):
     
     def perform_create(self, serializer):
         serializer.save(writer=self.request.user)
+
+    def list(self, request, *args, **kwargs):
+        query = request.query_params.get("search", "").strip()  # 검색어 가져오기
+        response = super().list(request, *args, **kwargs)  # 기본 list 기능 실행
+
+        if query:  # 검색어가 존재하면 기록 저장
+            user = request.user
+            if user.is_authenticated:
+                search_entry, created = SearchHistory.objects.get_or_create(user=user, keyword=query, defaults={'searched_at': timezone.now()})
+                if not created:
+                    search_entry.searched_at = timezone.now()
+                    search_entry.save()
+
+                # 검색 기록이 10개를 초과하면 가장 오래된 기록 삭제
+                search_history_qs = SearchHistory.objects.filter(user=user).order_by('-searched_at')
+                if search_history_qs.count() > 10:
+                    oldest_history = search_history_qs.last()
+                    oldest_history.delete()
+
+        return response
     
     @action(methods=['POST'], detail=True)
     def likes(self, request, pk=None):
@@ -71,4 +92,17 @@ class CommentViewSet(viewsets.ModelViewSet):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         serializer.save(post=post, writer=self.request.user)
+        return Response(serializer.data)
+
+class SearchHistoryViewSet(viewsets.ModelViewSet):
+    serializer_class = SearchHistorySerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        return SearchHistory.objects.filter(user=self.request.user).order_by('-searched_at')
+
+    @action(detail=False, methods=['get'])
+    def recent(self, request):
+        recent_searches = self.get_queryset()[:10]  # 최근 10개 검색 기록 반환
+        serializer = self.get_serializer(recent_searches, many=True)
         return Response(serializer.data)
