@@ -28,8 +28,7 @@ class PromiseSerializer(serializers.ModelSerializer):
         hour = obj.time.hour
         minute = obj.time.minute
         period = "오전" if hour < 12 else "오후"
-        formatted_hour = hour if 1 <= hour <= 12 else (hour - 12 if hour > 12 else 12)
-        return f"{period} {formatted_hour}:{minute:02d}"
+        return f"{period} {hour}:{minute:02d}"
 
     def create(self, validated_data):
         request_user = self.context['request'].user  # 현재 요청한 유저 (예약 요청자)
@@ -83,7 +82,8 @@ class MessageSerializer(serializers.ModelSerializer):
                 "is_sender",
                 "opponent_profile",
                 "promise_info",
-                "promise"
+                "promise",
+                "is_read"
                 ]
 
     def get_formatted_time(self, obj):
