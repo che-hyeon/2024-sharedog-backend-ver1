@@ -82,8 +82,8 @@ class MessageListView(APIView):
 
         # 상대방 정보 가져오기
         opponent = chat_room.participants.exclude(id=current_user.id).first()
-        unread_messages = messages.filter(sender=opponent, is_read=False)
-        unread_messages.update(is_read=True)
+        # unread_messages = messages.filter(sender=opponent, is_read=False)
+        # unread_messages.update(is_read=True)
 
 
         user_info = {
