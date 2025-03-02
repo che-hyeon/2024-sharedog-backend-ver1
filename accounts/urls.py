@@ -24,6 +24,6 @@ urlpatterns = [
     path('kakao/exchange-token', exchange_token, name='kakao_exchange_token'),  # JWT 토큰 발급
     path('', include(dog_router.urls)),
     path("check-email", CheckEmailExistsView.as_view(), name="check_email"),
-    # path('verify-email', EmailVerifyView.as_view(), name='verify_email'),
-    # path('verify-code', EmailVerifyConfirmView.as_view(), name='verify_code')
+    path('verify-email', EmailVerifyView.as_view(), name='verify_email'),
+    path('verify-code', EmailVerifyConfirmView.as_view(), name='verify_code')
 ]
