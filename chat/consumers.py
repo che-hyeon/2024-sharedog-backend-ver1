@@ -29,11 +29,12 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
 
     async def receive_json(self, content):
         try:
-            user = self.scope["user"]
-            if user.is_anonymous:
-                raise ValueError("인증된 사용자만 메시지를 보낼 수 있습니다.")
+            # user = self.scope["user"]
+            # if user.is_anonymous:
+            #     raise ValueError("인증된 사용자만 메시지를 보낼 수 있습니다.")
 
-            sender_email = user.email
+            # sender_email = user.email
+            sender_email = content['sender_email']
             message = content.get("message", "")
 
             if not message:
