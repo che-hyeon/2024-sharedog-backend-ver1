@@ -23,5 +23,7 @@ urlpatterns = [
     path('kakao/callback', kakao_callback, name='kakao_callback'),  # 카카오 인증 후 프론트 리다이렉트
     path('kakao/exchange-token', exchange_token, name='kakao_exchange_token'),  # JWT 토큰 발급
     path('', include(dog_router.urls)),
-    path("check-email", CheckEmailExistsView.as_view(), name="check-email"),
+    path("check-email", CheckEmailExistsView.as_view(), name="check_email"),
+    path('verify-email', EmailVerifyView.as_view(), name='verify_email'),
+    path('verify-code', EmailVerifyConfirmView.as_view(), name='verify_code')
 ]
