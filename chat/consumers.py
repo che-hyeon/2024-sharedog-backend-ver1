@@ -16,9 +16,8 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
             group_name = self.get_group_name(self.room_id)
             await self.channel_layer.group_add(group_name, self.channel_name)
             await self.accept()
-        except ValueError as e:
-            await self.send_json({'error': str(e)})
-            await self.close()
+        except Exception as e:
+            await self.send_json({'error': f'연결 오류: {str(e)}'})
 
     async def disconnect(self, close_code):
         try:
@@ -52,6 +51,9 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
                 room = await self.get_or_create_room(participant1_email, participant2_email)
                 self.room_id = str(room.id)
 
+            if not self.room_id:
+                raise ValueError("채팅방 ID를 찾을 수 없습니다.")
+            
             group_name = self.get_group_name(self.room_id)
             await self.save_message(room, sender_email, message)
             # message_obj = await self.save_message(room, sender_email, message)
@@ -117,8 +119,13 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
         user1, _ = User.objects.get_or_create(email=email1)
         user2, _ = User.objects.get_or_create(email=email2)
 
-        room, created = ChatRoom.objects.get_or_create()
-        room.participants.set([user1, user2])
+        room, created = ChatRoom.objects.get_or_create(
+            participants__in=[user1, user2]
+        )
+        if created:
+            room.participants.set([user1, user2])
+            room.save()  # DB에 반영
+
         return room
 
     @database_sync_to_async
@@ -127,7 +134,11 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
 
     @database_sync_to_async
     def save_message(self, room, sender_email, message_text):
-        sender = User.objects.get(email=sender_email)
+        try:
+            sender = User.objects.get(email=sender_email)
+        except User.DoesNotExist:
+            raise ValueError(f"발신자 {sender_email}를 찾을 수 없습니다.")
+
         Message.objects.create(room=room, sender=sender, text=message_text)
         # message = Message.objects.create(room=room, sender=sender, text=message_text)
         # return message
