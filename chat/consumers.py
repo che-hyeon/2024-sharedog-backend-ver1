@@ -29,23 +29,19 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
 
     async def receive_json(self, content):
         try:
-            # 현재 로그인한 유저 가져오기 (JWT 인증 기반)
             user = self.scope["user"]
             if user.is_anonymous:
                 raise ValueError("인증된 사용자만 메시지를 보낼 수 있습니다.")
-            
-            sender_email = user.email  # JWT 인증을 통해 로그인한 유저의 이메일
 
+            sender_email = user.email
             message = content.get("message", "")
 
             if not message:
                 raise ValueError("메시지가 비어 있습니다.")
 
-            # 기존 room_id가 존재하는 경우, 새 메시지 저장
             if hasattr(self, 'room_id') and await self.check_room_exists(self.room_id):
                 room = await self.get_room_by_id(self.room_id)
             else:
-                # 존재하지 않는 경우, 새 채팅방 생성
                 participant1_email = content.get('participant1_email')
                 participant2_email = content.get('participant2_email')
 
@@ -53,15 +49,17 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
                     raise ValueError("두 참가자 이메일이 필요합니다.")
 
                 room = await self.get_or_create_room(participant1_email, participant2_email)
-                self.room_id = str(room.id)  # 새 방 ID 설정
+                self.room_id = str(room.id)
 
             group_name = self.get_group_name(self.room_id)
-            await self.save_message(room, sender_email, message)
+            message_obj = await self.save_message(room, sender_email, message)
 
             await self.channel_layer.group_send(group_name, {
                 'type': 'chat_message',
                 'message': message,
-                'sender_email': sender_email
+                'sender_email': sender_email,
+                'message_id': message_obj.id,
+                'is_read': False
             })
         except ValueError as e:
             await self.send_json({'error': str(e)})
@@ -70,9 +68,42 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
         try:
             message = event['message']
             sender_email = event['sender_email']
-            await self.send_json({'message': message, 'sender_email': sender_email})
+            message_id = event.get('message_id')
+            is_read = event.get('is_read', False)
+
+            await self.send_json({
+                'message': message,
+                'sender_email': sender_email,
+                'message_id': message_id,
+                'is_read': is_read
+            })
         except Exception:
             await self.send_json({'error': '메시지 전송 실패'})
+
+    async def mark_messages_as_read(self, content):
+        try:
+            user = self.scope["user"]
+            if user.is_anonymous:
+                return
+
+            if not hasattr(self, 'room_id'):
+                return
+
+            room = await self.get_room_by_id(self.room_id)
+            opponent = await self.get_opponent(room, user)
+
+            await self.mark_unread_messages_as_read(room, opponent)
+
+            group_name = self.get_group_name(self.room_id)
+            await self.channel_layer.group_send(group_name, {
+                'type': 'chat_read',
+                'reader_email': user.email
+            })
+        except Exception as e:
+            print(f"Error in mark_messages_as_read: {e}")
+
+    async def chat_read(self, event):
+        await self.send_json({'type': 'chat_read', 'reader_email': event['reader_email']})
 
     @staticmethod
     def get_group_name(room_id):
@@ -94,8 +125,17 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
     @database_sync_to_async
     def save_message(self, room, sender_email, message_text):
         sender = User.objects.get(email=sender_email)
-        Message.objects.create(room=room, sender=sender, text=message_text)
+        message = Message.objects.create(room=room, sender=sender, text=message_text)
+        return message
 
     @database_sync_to_async
     def check_room_exists(self, room_id):
         return ChatRoom.objects.filter(id=room_id).exists()
+
+    @database_sync_to_async
+    def mark_unread_messages_as_read(self, room, reader):
+        Message.objects.filter(room=room, sender=reader, is_read=False).update(is_read=True)
+
+    @database_sync_to_async
+    def get_opponent(self, room, user):
+        return room.participants.exclude(id=user.id).first()

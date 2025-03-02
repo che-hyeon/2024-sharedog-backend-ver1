@@ -48,6 +48,7 @@ class Message(models.Model):
     text = models.TextField()
     timestamp = models.DateTimeField(auto_now_add=True)
     promise = models.ForeignKey(Promise, on_delete=models.SET_NULL, null=True, blank=True)
+    is_read = models.BooleanField(default=False)
 
     def __str__(self):
         return f"{self.sender.email}: {self.text[:30]}"
