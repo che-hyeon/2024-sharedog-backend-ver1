@@ -53,7 +53,7 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
 
             if not self.room_id:
                 raise ValueError("채팅방 ID를 찾을 수 없습니다.")
-            
+
             group_name = self.get_group_name(self.room_id)
             await self.save_message(room, sender_email, message)
             # message_obj = await self.save_message(room, sender_email, message)
@@ -61,9 +61,7 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
             await self.channel_layer.group_send(group_name, {
                 'type': 'chat_message',
                 'message': message,
-                'sender_email': sender_email,
-                # 'message_id': message_obj.id,
-                # 'is_read': False
+                'sender_email': sender_email
             })
         except ValueError as e:
             await self.send_json({'error': str(e)})

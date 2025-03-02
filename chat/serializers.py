@@ -82,8 +82,7 @@ class MessageSerializer(serializers.ModelSerializer):
                 "is_sender",
                 "opponent_profile",
                 "promise_info",
-                "promise",
-                # "is_read"
+                "promise"
                 ]
 
     def get_formatted_time(self, obj):
