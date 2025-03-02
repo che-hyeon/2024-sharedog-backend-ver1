@@ -264,66 +264,66 @@ class CheckEmailExistsView(APIView):
         exists = User.objects.filter(email=email).exists()
         return Response({"exists": exists}, status=status.HTTP_200_OK)
     
-from django.core.mail import EmailMessage
-from .utils import sendEmailHelper
+# from django.core.mail import EmailMessage
+# from .utils import sendEmailHelper
 
-from django.core.cache import caches
+# from django.core.cache import caches
 
-client = caches["email_verification"] 
+# client = caches["email_verification"] 
 
-class EmailVerifyView(APIView):
+# class EmailVerifyView(APIView):
 
-    def post(self, request, *args, **kwargs):
-        email = request.data.get("email")
-        code = sendEmailHelper.make_random_code_for_register()
-        client.set(email, code, timeout=300)
-        message = f"""
-        <html>
-        <body style="font-family: Arial, sans-serif; text-align: center; background-color: #f8f9fa; padding: 20px;">
-            <div style="max-width: 500px; margin: auto; background: white; padding: 20px; border-radius: 10px; box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.1);">
-                <h2 style="color: #ff6f61;">🐶 나눠주개 이메일 인증</h2>
-                <p style="font-size: 16px; color: #333;">안녕하세요! <br> 아래 인증 코드를 입력하여 이메일 인증을 완료해주세요.</p>
-                <div style="font-size: 22px; font-weight: bold; color: #fff; background: #ff6f61; padding: 10px; border-radius: 5px; display: inline-block; margin-top: 10px;">
-                    {code}
-                </div>
-                <p style="font-size: 14px; color: #555; margin-top: 15px;">이 코드는 5분 후 만료됩니다.</p>
-                <hr style="border: none; border-top: 1px solid #ddd; margin: 20px 0;">
-                <p style="font-size: 12px; color: #999;">이 메일은 자동 발송되었습니다. 문의 사항이 있다면 <a href="mailto:support@nanwoojugae.com" style="color: #ff6f61; text-decoration: none;">고객센터</a>로 문의해주세요.</p>
-            </div>
-        </body>
-        </html>
-        """
-        subject = "[나눠주개] 이메일 인증"
-        to = [email]
-        mail = EmailMessage(subject=subject, body=message, to=to)
-        mail.content_subtype = "html" # html형태로 템플릿을 만들었을 때 필요함
-        mail.send()
+#     def post(self, request, *args, **kwargs):
+#         email = request.data.get("email")
+#         code = sendEmailHelper.make_random_code_for_register()
+#         client.set(email, code, timeout=300)
+#         message = f"""
+#         <html>
+#         <body style="font-family: Arial, sans-serif; text-align: center; background-color: #f8f9fa; padding: 20px;">
+#             <div style="max-width: 500px; margin: auto; background: white; padding: 20px; border-radius: 10px; box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.1);">
+#                 <h2 style="color: #ff6f61;">🐶 나눠주개 이메일 인증</h2>
+#                 <p style="font-size: 16px; color: #333;">안녕하세요! <br> 아래 인증 코드를 입력하여 이메일 인증을 완료해주세요.</p>
+#                 <div style="font-size: 22px; font-weight: bold; color: #fff; background: #ff6f61; padding: 10px; border-radius: 5px; display: inline-block; margin-top: 10px;">
+#                     {code}
+#                 </div>
+#                 <p style="font-size: 14px; color: #555; margin-top: 15px;">이 코드는 5분 후 만료됩니다.</p>
+#                 <hr style="border: none; border-top: 1px solid #ddd; margin: 20px 0;">
+#                 <p style="font-size: 12px; color: #999;">이 메일은 자동 발송되었습니다. 문의 사항이 있다면 <a href="mailto:support@nanwoojugae.com" style="color: #ff6f61; text-decoration: none;">고객센터</a>로 문의해주세요.</p>
+#             </div>
+#         </body>
+#         </html>
+#         """
+#         subject = "[나눠주개] 이메일 인증"
+#         to = [email]
+#         mail = EmailMessage(subject=subject, body=message, to=to)
+#         mail.content_subtype = "html" # html형태로 템플릿을 만들었을 때 필요함
+#         mail.send()
         
-        return Response({"detail": "Success to send Email"}, status=status.HTTP_202_ACCEPTED)
+#         return Response({"detail": "Success to send Email"}, status=status.HTTP_202_ACCEPTED)
 
-class EmailVerifyConfirmView(APIView):
-    def post(self, request, *args, **kwargs):
-        email = request.data.get("email")
-        code = request.data.get("code")
+# class EmailVerifyConfirmView(APIView):
+#     def post(self, request, *args, **kwargs):
+#         email = request.data.get("email")
+#         code = request.data.get("code")
 
-        if not email or not code:
-            return Response({"error": "Email and code are required"}, status=status.HTTP_400_BAD_REQUEST)
+#         if not email or not code:
+#             return Response({"error": "Email and code are required"}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Redis에서 저장된 코드 가져오기
-        stored_code = client.get(email)
-        if not stored_code:
-            return Response({"error": "Verification code expired or invalid"}, status=status.HTTP_400_BAD_REQUEST)
+#         # Redis에서 저장된 코드 가져오기
+#         stored_code = client.get(email)
+#         if not stored_code:
+#             return Response({"error": "Verification code expired or invalid"}, status=status.HTTP_400_BAD_REQUEST)
 
-        if stored_code != code:
-            return Response({"error": "Incorrect verification code"}, status=status.HTTP_400_BAD_REQUEST)
+#         if stored_code != code:
+#             return Response({"error": "Incorrect verification code"}, status=status.HTTP_400_BAD_REQUEST)
 
-        # 이메일 인증 완료 처리 (예: User 모델에 is_verified 필드 업데이트)
-        # user = User.objects.filter(email=email).first()
-        # if user:
-        #     user.is_verified = True
-        #     user.save()
+#         # 이메일 인증 완료 처리 (예: User 모델에 is_verified 필드 업데이트)
+#         # user = User.objects.filter(email=email).first()
+#         # if user:
+#         #     user.is_verified = True
+#         #     user.save()
 
-        # 인증 성공 시 Redis에서 코드 삭제
-        client.delete(email)
+#         # 인증 성공 시 Redis에서 코드 삭제
+#         client.delete(email)
 
-        return Response({"detail": "Email verification successful"}, status=status.HTTP_200_OK)
+#         return Response({"detail": "Email verification successful"}, status=status.HTTP_200_OK)
