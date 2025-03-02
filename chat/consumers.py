@@ -53,14 +53,15 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
                 self.room_id = str(room.id)
 
             group_name = self.get_group_name(self.room_id)
-            message_obj = await self.save_message(room, sender_email, message)
+            await self.save_message(room, sender_email, message)
+            # message_obj = await self.save_message(room, sender_email, message)
 
             await self.channel_layer.group_send(group_name, {
                 'type': 'chat_message',
                 'message': message,
                 'sender_email': sender_email,
-                'message_id': message_obj.id,
-                'is_read': False
+                # 'message_id': message_obj.id,
+                # 'is_read': False
             })
         except ValueError as e:
             await self.send_json({'error': str(e)})
@@ -69,42 +70,43 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
         try:
             message = event['message']
             sender_email = event['sender_email']
-            message_id = event.get('message_id')
-            is_read = event.get('is_read', False)
+            await self.send_json({'message': message, 'sender_email': sender_email})
+            # message_id = event.get('message_id')
+            # is_read = event.get('is_read', False)
 
-            await self.send_json({
-                'message': message,
-                'sender_email': sender_email,
-                'message_id': message_id,
-                'is_read': is_read
-            })
+            # await self.send_json({
+            #     'message': message,
+            #     'sender_email': sender_email,
+            #     'message_id': message_id,
+            #     'is_read': is_read
+            # })
         except Exception:
             await self.send_json({'error': '메시지 전송 실패'})
 
-    async def mark_messages_as_read(self, content):
-        try:
-            user = self.scope["user"]
-            if user.is_anonymous:
-                return
+    # async def mark_messages_as_read(self, content):
+    #     try:
+    #         user = self.scope["user"]
+    #         if user.is_anonymous:
+    #             return
 
-            if not hasattr(self, 'room_id'):
-                return
+    #         if not hasattr(self, 'room_id'):
+    #             return
 
-            room = await self.get_room_by_id(self.room_id)
-            opponent = await self.get_opponent(room, user)
+    #         room = await self.get_room_by_id(self.room_id)
+    #         opponent = await self.get_opponent(room, user)
 
-            await self.mark_unread_messages_as_read(room, opponent)
+    #         await self.mark_unread_messages_as_read(room, opponent)
 
-            group_name = self.get_group_name(self.room_id)
-            await self.channel_layer.group_send(group_name, {
-                'type': 'chat_read',
-                'reader_email': user.email
-            })
-        except Exception as e:
-            print(f"Error in mark_messages_as_read: {e}")
+    #         group_name = self.get_group_name(self.room_id)
+    #         await self.channel_layer.group_send(group_name, {
+    #             'type': 'chat_read',
+    #             'reader_email': user.email
+    #         })
+    #     except Exception as e:
+    #         print(f"Error in mark_messages_as_read: {e}")
 
-    async def chat_read(self, event):
-        await self.send_json({'type': 'chat_read', 'reader_email': event['reader_email']})
+    # async def chat_read(self, event):
+    #     await self.send_json({'type': 'chat_read', 'reader_email': event['reader_email']})
 
     @staticmethod
     def get_group_name(room_id):
@@ -126,17 +128,18 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
     @database_sync_to_async
     def save_message(self, room, sender_email, message_text):
         sender = User.objects.get(email=sender_email)
-        message = Message.objects.create(room=room, sender=sender, text=message_text)
-        return message
+        Message.objects.create(room=room, sender=sender, text=message_text)
+        # message = Message.objects.create(room=room, sender=sender, text=message_text)
+        # return message
 
     @database_sync_to_async
     def check_room_exists(self, room_id):
         return ChatRoom.objects.filter(id=room_id).exists()
 
-    @database_sync_to_async
-    def mark_unread_messages_as_read(self, room, reader):
-        Message.objects.filter(room=room, sender=reader, is_read=False).update(is_read=True)
+    # @database_sync_to_async
+    # def mark_unread_messages_as_read(self, room, reader):
+    #     Message.objects.filter(room=room, sender=reader, is_read=False).update(is_read=True)
 
-    @database_sync_to_async
-    def get_opponent(self, room, user):
-        return room.participants.exclude(id=user.id).first()
+    # @database_sync_to_async
+    # def get_opponent(self, room, user):
+    #     return room.participants.exclude(id=user.id).first()
