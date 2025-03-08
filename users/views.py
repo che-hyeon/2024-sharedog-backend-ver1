@@ -4,6 +4,8 @@ from rest_framework.response import Response
 from accounts.models import Dog,User
 from .serializers import AddDogSerializer, MyPageSerializer
 from rest_framework.viewsets import ReadOnlyModelViewSet
+from community.models import Post
+from .serializers import MyPostSerializer
 
 class AddDogViewSet(viewsets.ModelViewSet):
     queryset = Dog.objects.all()
@@ -48,3 +50,9 @@ class MyPageViewSet(ReadOnlyModelViewSet):
         현재 로그인한 사용자만 반환
         """
         return User.objects.filter(id=self.request.user.id)
+
+class MyPostViewSet(ReadOnlyModelViewSet):
+    serializer_class = MyPostSerializer
+
+    def get_queryset(self):
+        return Post.objects.filter(writer=self.request.user)
