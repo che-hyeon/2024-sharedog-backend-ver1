@@ -1,6 +1,7 @@
 from .models import *
 from rest_framework import serializers
 from accounts.models import User, Dog
+from community.models import Post
 
 class AddDogSerializer(serializers.ModelSerializer):
     user = serializers.CharField(source='user.user_name', read_only=True)
@@ -33,3 +34,10 @@ class MyPageSerializer(serializers.ModelSerializer):
         """
         represent_dogs = Dog.objects.filter(user=obj, represent=True)  # represent=True로 필터링
         return DogImageSerializer(represent_dogs, many=True, context=self.context).data
+
+class MyPostSerializer(serializers.ModelSerializer):
+    writer = serializers.CharField(source='writer.user_name',read_only=True)
+
+    class Meta:
+        model = Post
+        fields = '__all__'
