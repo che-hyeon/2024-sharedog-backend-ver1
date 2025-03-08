@@ -28,7 +28,8 @@ class PromiseSerializer(serializers.ModelSerializer):
         hour = obj.time.hour
         minute = obj.time.minute
         period = "오전" if hour < 12 else "오후"
-        return f"{period} {hour}:{minute:02d}"
+        formatted_hour = hour if hour == 12 or hour == 0 else hour % 12  # 12시간제 변환
+        return f"{period} {formatted_hour}:{minute:02d}"
 
     def create(self, validated_data):
         request_user = self.context['request'].user  # 현재 요청한 유저 (예약 요청자)
@@ -97,7 +98,8 @@ class MessageSerializer(serializers.ModelSerializer):
                 "is_sender",
                 "opponent_profile",
                 "promise_info",
-                "promise"
+                "promise",
+                "is_read"
                 ]
 
     def get_formatted_time(self, obj):
@@ -128,9 +130,7 @@ class MessageSerializer(serializers.ModelSerializer):
 
     def get_promise_info(self, obj):
         """메시지와 연결된 예약 정보를 반환"""
-        if obj.promise:
-            return PromiseSerializer(obj.promise, context=self.context).data
-        return None
+        return PromiseSerializer(obj.promise, context=self.context).data if obj.promise else None
     
 class GroupedMessageSerializer(serializers.Serializer):
     """날짜별 메시지 그룹화"""
@@ -177,7 +177,7 @@ class ChatRoomSerializer(serializers.ModelSerializer):
                 ]
     def get_latest_message(self, obj):
         latest_msg = Message.objects.filter(room=obj).order_by('-timestamp').first()
-        return latest_msg.text if latest_msg else None
+        return latest_msg.text if latest_msg else ""
 
     def get_latest_message_time(self, obj):
         latest_msg = Message.objects.filter(room=obj).order_by('-timestamp').first()
@@ -190,8 +190,8 @@ class ChatRoomSerializer(serializers.ModelSerializer):
 
         if message_time.date() == now.date():
             period = "오전" if message_time.hour < 12 else "오후"
-            hour = message_time.hour if message_time.hour <= 12 else message_time.hour - 12
-            return f"{period} {hour}:{message_time.minute:02d}"
+            formatted_hour = message_time.hour if message_time.hour == 12 or message_time.hour == 0 else message_time.hour % 12
+            return f"{period} {formatted_hour}:{message_time.minute:02d}"
         
         elif message_time.date() == (now - timedelta(days=1)).date():
             return "어제"
@@ -230,4 +230,4 @@ class ChatRoomSerializer(serializers.ModelSerializer):
     
     def get_is_promise(self, instance):
         latest_msg = Message.objects.filter(room=instance).order_by('-timestamp').first()
-        return latest_msg.promise is not None if latest_msg else False
+        return bool(latest_msg and latest_msg.promise)
