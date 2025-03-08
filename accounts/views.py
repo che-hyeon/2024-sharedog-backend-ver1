@@ -75,6 +75,24 @@ class LoginAPIView(APIView):
         else:
             return Response({"error": "아이디와 비밀번호를 정확히 입력해주세요."}, status=status.HTTP_400_BAD_REQUEST)
 
+class ResetPasswordAPIView(APIView):
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        email = request.data.get('email')
+        new_password = request.data.get('new_password')
+
+        if not email or not new_password:
+            return Response({"error": "email과 새로운 비밀번호를 모두 입력해주세요."}, status=status.HTTP_400_BAD_REQUEST)
+        
+        user = User.objects.filter(email=email).first()
+        if not user:
+            return Response({"error": "가입되지 않은 이메일입니다."}, status=status.HTTP_404_NOT_FOUND)
+        
+        user.set_password(new_password)
+        user.save()
+
+        return Response({"message": "비밀번호가 성공적으로 변경되었습니다."}, status=status.HTTP_200_OK)
 
 class LogoutAPIView(APIView):
     permission_classes = [IsAuthenticated]
@@ -275,6 +293,10 @@ class EmailVerifyView(APIView):
 
     def post(self, request, *args, **kwargs):
         email = request.data.get("email")
+        if not email or "@" not in email:
+            return Response({"detail": "Email is required and must be valid"}, status=status.HTTP_400_BAD_REQUEST)
+    
+
         code = sendEmailHelper.make_random_code_for_register()
         client.set(email, code, timeout=300)
         message = f"""
@@ -307,15 +329,15 @@ class EmailVerifyConfirmView(APIView):
         code = request.data.get("code")
 
         if not email or not code:
-            return Response({"error": "Email and code are required"}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"error": "Email and code are required", "correct": False}, status=status.HTTP_400_BAD_REQUEST)
 
         # Redis에서 저장된 코드 가져오기
         stored_code = client.get(email)
         if not stored_code:
-            return Response({"error": "Verification code expired or invalid"}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"error": "Verification code expired or invalid", "correct": False}, status=status.HTTP_400_BAD_REQUEST)
 
         if stored_code != code:
-            return Response({"error": "Incorrect verification code"}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"error": "Incorrect verification code", "correct": False}, status=status.HTTP_400_BAD_REQUEST)
 
         # 이메일 인증 완료 처리 (예: User 모델에 is_verified 필드 업데이트)
         # user = User.objects.filter(email=email).first()
@@ -326,4 +348,4 @@ class EmailVerifyConfirmView(APIView):
         # 인증 성공 시 Redis에서 코드 삭제
         client.delete(email)
 
-        return Response({"detail": "Email verification successful"}, status=status.HTTP_200_OK)
+        return Response({"detail": "Email verification successful", "correct": True}, status=status.HTTP_200_OK)
