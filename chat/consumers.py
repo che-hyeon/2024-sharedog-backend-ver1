@@ -147,7 +147,7 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
             sender = User.objects.get(email=sender_email)
         except User.DoesNotExist:
             raise ValueError(f"발신자 {sender_email}를 찾을 수 없습니다.")
-        Message.objects.create(room=room, sender=sender, text=message_text)
+        Message.objects.create(room=room, sender=sender, text=message_text, is_read=False)
         # message = Message.objects.create(room=room, sender=sender, text=message_text)
         # return message
 
