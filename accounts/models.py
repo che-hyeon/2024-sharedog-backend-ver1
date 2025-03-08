@@ -8,8 +8,7 @@ class UserManager(BaseUserManager):
             raise ValueError('Users must have an email address')
         user = self.model(
             email=email,
-            user_name=kwargs.get('user_name', ''),
-            phone=kwargs.get('phone', ''),
+            user_name=kwargs.get('user_name', '')
         )
         user.set_password(password)
         user.save(using=self._db)
@@ -33,7 +32,7 @@ class User(AbstractBaseUser, PermissionsMixin):
     
     email = models.EmailField(max_length=30, unique=True, null=False, blank=False)
     user_name = models.CharField(max_length=30, null=False, blank=False)
-    phone = models.CharField(max_length=30, null=False, blank=False)
+    # phone = models.CharField(max_length=30, null=False, blank=False)
     is_superuser = models.BooleanField(default=False)
     is_active = models.BooleanField(default=True)
     is_staff = models.BooleanField(default=False)
