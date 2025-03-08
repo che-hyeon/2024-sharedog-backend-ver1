@@ -1,6 +1,5 @@
 from collections import defaultdict
 from channels.generic.websocket import AsyncJsonWebsocketConsumer
-from rest_framework_simplejwt.authentication import JWTAuthentication
 from channels.db import database_sync_to_async
 from django.contrib.auth import get_user_model
 from .models import ChatRoom, Message
@@ -22,11 +21,7 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
             await self.channel_layer.group_add(group_name, self.channel_name)
 
             # 현재 사용자 이메일
-            token = self.scope.get('query_string').decode().split('=')[1]
-        
-            # JWT 인증을 통해 사용자 정보를 가져옴
-            user = await self.authenticate(token)
-            current_user_email = user.email
+            current_user_email = self.scope["user"].email
 
             # 상대방 이메일 가져오기
             room = await self.get_room_by_id(self.room_id)
@@ -47,11 +42,7 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
             group_name = self.get_group_name(self.room_id)
             
             # 사용자 제거
-            token = self.scope.get('query_string').decode().split('=')[1]
-        
-            # JWT 인증을 통해 사용자 정보를 가져옴
-            user = await self.authenticate(token)
-            current_user_email = user.email
+            current_user_email = self.scope["user"].email
             self.connected_users[group_name].discard(current_user_email)
 
             # 그룹에서 제거
@@ -61,10 +52,7 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
 
     async def receive_json(self, content):
         try:
-            token = self.scope.get('query_string').decode().split('=')[1]
-        
-            # JWT 인증을 통해 사용자 정보를 가져옴
-            user = await self.authenticate(token)
+            user = self.scope["user"]
             if user.is_anonymous:
                 raise ValueError("인증된 사용자만 메시지를 보낼 수 있습니다.")
 
@@ -167,15 +155,3 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
         if opponent:
             return opponent.email
         return None
-    
-    @database_sync_to_async
-    def authenticate(self, token):
-        """JWT 토큰을 사용하여 인증된 사용자 가져오기"""
-        try:
-            # JWT 인증을 사용하여 사용자 인증
-            validated_token = JWTAuthentication().get_validated_token(token)
-            user = JWTAuthentication().get_user(validated_token)
-            return user
-        except Exception as e:
-            print(f"Authentication failed: {e}")
-            return None
