@@ -70,7 +70,20 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
         try:
             message = event['message']
             sender_email = event['sender_email']
-            await self.send_json({'message': message, 'sender_email': sender_email})
+
+            response_data = {
+                'message': message,
+                'sender_email': sender_email
+            }
+
+            if "promise_id" in event:
+                response_data.update({
+                    "promise_id": event["promise_id"],
+                    "promise_day": event["promise_day"],
+                    "promise_time": event["promise_time"]
+                })
+            
+            await self.send_json(response_data)
             # message_id = event.get('message_id')
             # is_read = event.get('is_read', False)
 
