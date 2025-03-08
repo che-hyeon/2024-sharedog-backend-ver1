@@ -25,5 +25,6 @@ urlpatterns = [
     path('', include(dog_router.urls)),
     path("check-email", CheckEmailExistsView.as_view(), name="check_email"),
     path('verify-email', EmailVerifyView.as_view(), name='verify_email'),
-    path('verify-code', EmailVerifyConfirmView.as_view(), name='verify_code')
+    path('verify-code', EmailVerifyConfirmView.as_view(), name='verify_code'),
+    path('reset-password', ResetPasswordAPIView.as_view(), name='reset_password')
 ]
