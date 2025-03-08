@@ -55,11 +55,26 @@ class PromiseSerializer(serializers.ModelSerializer):
 
         # 채팅방에 자동 메시지 추가
         message_text = "헌혈 약속을 만들었어요"
-        Message.objects.create(
+        message = Message.objects.create(
             room=chat_room,
             sender=request_user,  # 예약을 요청한 사람이 sender
             text=message_text,
             promise = promise
+        )
+        from channels.layers import get_channel_layer
+        from asgiref.sync import async_to_sync
+
+        channel_layer = get_channel_layer()
+        async_to_sync(channel_layer.group_send)(
+            f"chat_room_{room_id}",  
+            {
+                "type": "chat_message",
+                "message": message.text,
+                "sender_email": request_user.email,
+                "promise_id": promise.id,  # 약속 ID 추가
+                "promise_day": promise.day.strftime("%Y-%m-%d"),
+                "promise_time": promise.time.strftime("%H:%M")
+            }
         )
 
         return promise
