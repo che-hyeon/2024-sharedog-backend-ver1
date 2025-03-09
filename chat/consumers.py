@@ -22,6 +22,7 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
 
             # 현재 사용자 이메일
             current_user_email = self.scope["user"].email
+            print(current_user_email)
 
             # 상대방 이메일 가져오기
             room = await self.get_room_by_id(self.room_id)
