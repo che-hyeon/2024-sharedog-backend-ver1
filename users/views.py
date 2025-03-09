@@ -2,10 +2,12 @@ from rest_framework import viewsets
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from accounts.models import Dog,User
-from .serializers import AddDogSerializer, MyPageSerializer
+from .serializers import AddDogSerializer, MyPageSerializer, MyPromiseSerializer
 from rest_framework.viewsets import ReadOnlyModelViewSet
 from community.models import Post
 from .serializers import MyPostSerializer
+from chat.models import Promise
+from django.db.models import Q
 
 class AddDogViewSet(viewsets.ModelViewSet):
     queryset = Dog.objects.all()
@@ -56,3 +58,16 @@ class MyPostViewSet(ReadOnlyModelViewSet):
 
     def get_queryset(self):
         return Post.objects.filter(writer=self.request.user)
+
+class MyPromiseViewSet(ReadOnlyModelViewSet):
+    """
+    현재 로그인한 사용자의 약속 목록을 조회하는 뷰셋
+    """
+    serializer_class = MyPromiseSerializer
+
+    def get_queryset(self):
+        """
+        현재 로그인한 사용자가 user1 또는 user2인 약속을 가져옴
+        """
+        user = self.request.user
+        return Promise.objects.filter(Q(user1=user) | Q(user2=user))
