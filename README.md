@@ -47,7 +47,7 @@ deactivate
 - `Remove`: 파일을 삭제하는 작업만 수행한 경우
 
 ## 💡 PR Convetion
-
+pr이 왜 안뜨냐 ,,
 깃모지 쉽게쓰는법
 npm install -g gitmoji-cli 설치
 gitmoji -c 으로 깃모지,커밋메세지 입력가능
