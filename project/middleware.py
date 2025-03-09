@@ -4,7 +4,6 @@ from rest_framework_simplejwt.tokens import UntypedToken
 from rest_framework_simplejwt.exceptions import InvalidToken, TokenError
 from django.contrib.auth import get_user_model
 import jwt
-from django.conf import settings
 
 User = get_user_model()
 
@@ -20,16 +19,18 @@ class JWTAuthMiddleware:
         self.inner = inner
 
     async def __call__(self, scope, receive, send):
-        headers = dict(scope["headers"])
-        if b"authorization" in headers:
-            token_name, token_key = headers[b"authorization"].decode().split()
-            if token_name.lower() == "bearer":
-                try:
-                    validated_token = UntypedToken(token_key)
-                    scope["user"] = await get_user(validated_token)
-                except (InvalidToken, TokenError, jwt.DecodeError):
-                    scope["user"] = AnonymousUser()
-            else:
+        query_string = scope.get("query_string", b"").decode("utf-8")
+        token = None
+
+        if query_string:
+            # 쿼리 파라미터에서 토큰 추출
+            token = query_string.split("=")[-1]
+
+        if token:
+            try:
+                validated_token = UntypedToken(token)
+                scope["user"] = await get_user(validated_token)
+            except (InvalidToken, TokenError, jwt.DecodeError):
                 scope["user"] = AnonymousUser()
         else:
             scope["user"] = AnonymousUser()
