@@ -30,7 +30,7 @@ deactivate
 
 ## 🎯 Commit Convention
 
-"태그:제목"의 형태이며, : 뒤에만 space가 있음에 유의합니다. ex) Feat: 메인페이지 추가
+"태그:제목"의 형태이며, : 뒤에만 space가 있음에 유의합니다. ex) Feat: 메인페이지 추가.
 
 - `Feat`: 새로운 기능을 추가할 경우
 - `Fix`: 버그를 고친 경우
