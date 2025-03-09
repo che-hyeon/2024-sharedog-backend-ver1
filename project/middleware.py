@@ -1,38 +1,39 @@
-from django.contrib.auth.models import AnonymousUser
 from channels.db import database_sync_to_async
-from rest_framework_simplejwt.tokens import UntypedToken
-from rest_framework_simplejwt.exceptions import InvalidToken, TokenError
-from django.contrib.auth import get_user_model
 import jwt
+from django.conf import settings
+from channels.auth import AuthMiddlewareStack
+from django.contrib.auth import get_user_model
 
 User = get_user_model()
-
-@database_sync_to_async
-def get_user(validated_token):
-    try:
-        return User.objects.get(id=validated_token["user_id"])
-    except User.DoesNotExist:
-        return AnonymousUser()
 
 class JWTAuthMiddleware:
     def __init__(self, inner):
         self.inner = inner
 
     async def __call__(self, scope, receive, send):
-        query_string = scope.get("query_string", b"").decode("utf-8")
-        token = None
-
-        if query_string:
-            # 쿼리 파라미터에서 토큰 추출
-            token = query_string.split("=")[-1]
-
+        token = self.get_token_from_scope(scope)
         if token:
-            try:
-                validated_token = UntypedToken(token)
-                scope["user"] = await get_user(validated_token)
-            except (InvalidToken, TokenError, jwt.DecodeError):
-                scope["user"] = AnonymousUser()
-        else:
-            scope["user"] = AnonymousUser()
-
+            user = await self.authenticate_user(token)
+            scope['user'] = user
+        # super().__call__ 대신 아래와 같이 수정
         return await self.inner(scope, receive, send)
+
+    def get_token_from_scope(self, scope):
+        query_string = scope.get('query_string', b'').decode()
+        token = None
+        for param in query_string.split('&'):
+            if param.startswith('token='):
+                token = param.split('=')[1]
+        return token
+
+    @database_sync_to_async
+    def authenticate_user(self, token):
+        try:
+            payload = jwt.decode(token, settings.SECRET_KEY, algorithms=["HS256"])
+            return User.objects.get(id=payload['user_id'])
+        except jwt.ExpiredSignatureError:
+            raise Exception('Token has expired')
+        except jwt.DecodeError:
+            raise Exception('Token is invalid')
+        except User.DoesNotExist:
+            raise Exception('User does not exist')
