@@ -11,7 +11,9 @@ class JWTAuthMiddleware:
         self.inner = inner
 
     async def __call__(self, scope, receive, send):
+        print(scope)  # scope를 디버깅
         token = self.get_token_from_scope(scope)
+        print(token)
         if token:
             user = await self.authenticate_user(token)
             scope['user'] = user
