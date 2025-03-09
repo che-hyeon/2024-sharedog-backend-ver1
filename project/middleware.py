@@ -11,13 +11,15 @@ class JWTAuthMiddleware:
         self.inner = inner
 
     async def __call__(self, scope, receive, send):
-        print(scope)  # scope를 디버깅
+        print("DEBUG: Scope ->", scope)  # 디버깅용 로그
+        print("DEBUG: Query String ->", scope.get('query_string', b'').decode())  # 추가 로그
+
         token = self.get_token_from_scope(scope)
-        print(token)
+        print("DEBUG: Extracted Token ->", token)  # 토큰 확인
+
         if token:
             user = await self.authenticate_user(token)
             scope['user'] = user
-        # super().__call__ 대신 아래와 같이 수정
         return await self.inner(scope, receive, send)
 
     def get_token_from_scope(self, scope):
@@ -32,10 +34,14 @@ class JWTAuthMiddleware:
     def authenticate_user(self, token):
         try:
             payload = jwt.decode(token, settings.SECRET_KEY, algorithms=["HS256"])
+            print("DEBUG: JWT Payload ->", payload)  # 추가 로그
             return User.objects.get(id=payload['user_id'])
         except jwt.ExpiredSignatureError:
+            print("ERROR: Token has expired")  # 로그 추가
             raise Exception('Token has expired')
         except jwt.DecodeError:
+            print("ERROR: Token is invalid")  # 로그 추가
             raise Exception('Token is invalid')
         except User.DoesNotExist:
+            print("ERROR: User does not exist")  # 로그 추가
             raise Exception('User does not exist')
