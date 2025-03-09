@@ -2,7 +2,7 @@ from .models import *
 from rest_framework import serializers
 from accounts.models import User, Dog
 from community.models import Post
-
+from chat.models import Promise
 class AddDogSerializer(serializers.ModelSerializer):
     user = serializers.CharField(source='user.user_name', read_only=True)
     
@@ -41,3 +41,25 @@ class MyPostSerializer(serializers.ModelSerializer):
     class Meta:
         model = Post
         fields = '__all__'
+
+class MyPromiseSerializer(serializers.ModelSerializer):
+    """
+    현재 사용자의 약속(Promise) 데이터를 직렬화하는 시리얼라이저
+    """
+    other_user = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Promise
+        fields = ['id', 'day', 'time', 'place', 'other_user', 'created_at', 'updated_at']
+
+    def get_other_user(self, obj):
+        """
+        현재 로그인한 사용자가 user1이면 user2의 이름, user2이면 user1의 이름 반환
+        """
+        request = self.context.get('request')
+        if request and request.user:
+            if obj.user1 == request.user:
+                return obj.user2.user_name  # 상대방 = user2
+            else:
+                return obj.user1.user_name  # 상대방 = user1
+        return None
