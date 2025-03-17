@@ -54,25 +54,37 @@ class PromiseSerializer(serializers.ModelSerializer):
 
         promise = super().create(validated_data)
 
+        # 상대방이 웹소켓에 연결되어 있는지 확인
+        from channels.layers import get_channel_layer
+        from asgiref.sync import async_to_sync
+        from .consumers import ChatConsumer
+        channel_layer = get_channel_layer()
+
+        group_name = f"chat_room_{room_id}"
+        is_read = False
+        if group_name in ChatConsumer.connected_users:
+            if user2.email in ChatConsumer.connected_users[group_name]:
+                is_read = True
+
         # 채팅방에 자동 메시지 추가
         message_text = "헌혈 약속을 만들었어요"
         message = Message.objects.create(
             room=chat_room,
             sender=request_user,  # 예약을 요청한 사람이 sender
             text=message_text,
-            promise = promise
+            promise=promise,
+            is_read=is_read  # 읽음 여부 설정
         )
-        from channels.layers import get_channel_layer
-        from asgiref.sync import async_to_sync
 
-        channel_layer = get_channel_layer()
+        # 웹소켓 메시지 전송
         async_to_sync(channel_layer.group_send)(
-            f"chat_room_{room_id}",  
+            group_name,
             {
                 "type": "chat_message",
                 "message": message.text,
                 "sender_email": request_user.email,
-                "promise_id": promise.id,  # 약속 ID 추가
+                "is_read": is_read,  # is_read 추가
+                "promise_id": promise.id,
                 "promise_day": promise.day.strftime("%Y-%m-%d"),
                 "promise_time": promise.time.strftime("%H:%M")
             }
@@ -173,7 +185,8 @@ class ChatRoomSerializer(serializers.ModelSerializer):
                 'opponent_email',
                 'opponent_user',
                 'opponent_user_profile',
-                'is_promise'
+                'is_promise',
+                'unread_messages'
                 ]
     def get_latest_message(self, obj):
         latest_msg = Message.objects.filter(room=obj).order_by('-timestamp').first()
@@ -231,3 +244,12 @@ class ChatRoomSerializer(serializers.ModelSerializer):
     def get_is_promise(self, instance):
         latest_msg = Message.objects.filter(room=instance).order_by('-timestamp').first()
         return bool(latest_msg and latest_msg.promise)
+    
+    unread_messages = serializers.SerializerMethodField()
+    def get_unread_messages(self, instance):
+        request_user = self.context['request'].user
+        if request_user.is_authenticated:
+            opponent = instance.participants.exclude(id=request_user.id).first()
+            if opponent:
+                return Message.objects.filter(room=instance, sender=opponent, is_read=False).count()
+        return 0
