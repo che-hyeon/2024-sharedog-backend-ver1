@@ -40,7 +40,15 @@ class ChatRoom(models.Model):
 
     def __str__(self):
         return f"ChatRoom {self.id} - Participants: {', '.join(user.email for user in self.participants.all())}"
-
+    
+    def get_other_participant_name(self, current_user):
+        # 참가자 중 현재 사용자를 제외한 다른 참가자 가져오기
+        other_participants = self.participants.exclude(id=current_user.id)
+        if other_participants.exists():
+            # 첫 번째 다른 참가자의 이름을 반환
+            return other_participants.first().user_name  # 또는 email, 원하는 필드로 수정 가능
+        return None
+    
 # ✅ Message 모델 (sender_email → sender를 User로 변경)
 class Message(models.Model):
     room = models.ForeignKey(ChatRoom, on_delete=models.CASCADE, related_name="messages")
