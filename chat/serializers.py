@@ -98,6 +98,7 @@ class MessageSerializer(serializers.ModelSerializer):
     sender_name = serializers.SerializerMethodField()
     is_sender = serializers.SerializerMethodField()
     promise_info = serializers.SerializerMethodField()
+    image_url = serializers.SerializerMethodField()
 
     class Meta:
         model = Message
@@ -111,7 +112,8 @@ class MessageSerializer(serializers.ModelSerializer):
                 "opponent_profile",
                 "promise_info",
                 "promise",
-                "is_read"
+                "is_read",
+                "image_url"
                 ]
 
     def get_formatted_time(self, obj):
@@ -143,6 +145,12 @@ class MessageSerializer(serializers.ModelSerializer):
     def get_promise_info(self, obj):
         """메시지와 연결된 예약 정보를 반환"""
         return PromiseSerializer(obj.promise, context=self.context).data if obj.promise else None
+    
+    def get_image_url(self, obj):
+        """메시지에 첨부된 이미지 URL 반환"""
+        if obj.image:
+            return obj.image.url
+        return None
     
 class GroupedMessageSerializer(serializers.Serializer):
     """날짜별 메시지 그룹화"""
