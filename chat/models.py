@@ -3,6 +3,8 @@ from accounts.models import User
 from django.core.exceptions import ValidationError
 
 # Create your models here.
+def image_upload_path(instance, filename):
+    return f'{instance.pk}/{filename}'
 
 class Promise(models.Model):
     id = models.AutoField(primary_key=True)
@@ -57,6 +59,7 @@ class Message(models.Model):
     timestamp = models.DateTimeField(auto_now_add=True)
     promise = models.ForeignKey(Promise, on_delete=models.SET_NULL, null=True, blank=True)
     is_read = models.BooleanField(default=False)
+    image = models.ImageField(upload_to=image_upload_path, null=True, blank=True)
 
     def __str__(self):
         return f"{self.sender.email}: {self.text[:30]}"
