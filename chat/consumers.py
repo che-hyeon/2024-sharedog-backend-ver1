@@ -40,15 +40,21 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
             for msg in unread_messages:
                 print(f"보낸 메시지: {msg['message']}")
                 # 모든 참여자에게 메시지를 전송
-                await self.channel_layer.group_send(group_name, {
+                await self.send_json({
                     'type': 'chat_message',
                     'message': msg['message'],
                     'sender_email': msg['sender_email'],
-                    'is_read': True  # 읽음 상태로 업데이트
+                    'is_read': True  # b는 읽음 처리된 상태로 받음
                 })
 
             # ✅ 3️⃣ 메시지를 읽음 처리 (update 실행)
             await self.mark_messages_as_read(room, opponent_email)
+            group_name = self.get_group_name(self.room_id)
+            await self.channel_layer.group_send(group_name, {
+                'type': 'update_read_status',
+                'room_id': self.room_id,
+                'is_read': True
+            })
         except Exception as e:
             await self.send_json({'error': f'연결 오류: {str(e)}'})
 
@@ -128,6 +134,16 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
                 "promise_time": event["promise_time"]
             })
         await self.send_json(response_data)
+
+    async def update_read_status(self, event):
+        """
+        상대방이 채팅을 읽었을 때, 기존 메시지들의 읽음 상태를 업데이트하여 보냄
+        """
+        await self.send_json({
+            'type': 'update_read_status',
+            'room_id': event['room_id'],
+            'is_read': event['is_read']
+        })
 
     @staticmethod
     def get_group_name(room_id):
