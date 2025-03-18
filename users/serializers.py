@@ -8,7 +8,7 @@ class AddDogSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = Dog
-        fields = '__all__'
+        fields = ['represent','user','dog_name','dog_age','weight','neuter','blood','dog_image']
 
 class DogImageSerializer(serializers.ModelSerializer):
     """
@@ -47,10 +47,11 @@ class MyPromiseSerializer(serializers.ModelSerializer):
     현재 사용자의 약속(Promise) 데이터를 직렬화하는 시리얼라이저
     """
     other_user = serializers.SerializerMethodField()
+    other_user_image = serializers.SerializerMethodField()
 
     class Meta:
         model = Promise
-        fields = ['id', 'day', 'time', 'place', 'other_user', 'created_at', 'updated_at']
+        fields = ['id', 'day', 'time', 'place', 'other_user', 'other_user_image','created_at', 'updated_at']
 
     def get_other_user(self, obj):
         """
@@ -62,4 +63,23 @@ class MyPromiseSerializer(serializers.ModelSerializer):
                 return obj.user2.user_name  # 상대방 = user2
             else:
                 return obj.user1.user_name  # 상대방 = user1
+        return None
+
+    def get_other_user_image(self, obj):
+        """
+        상대방의 대표 강아지 사진을 반환 (대표 강아지가 없으면 첫 번째 강아지)
+        """
+        request = self.context.get('request')
+        if request and request.user:
+            other_user = obj.user2 if obj.user1 == request.user else obj.user1  # 상대방 찾기
+
+            # 1️⃣ 대표 강아지가 있으면 대표 강아지 사진 반환
+            dog = Dog.objects.filter(user=other_user, represent=True).first()
+
+            # 2️⃣ 대표 강아지가 없으면 첫 번째 강아지 사진 반환
+            if not dog:
+                dog = Dog.objects.filter(user=other_user).first()
+
+            if dog and dog.dog_image:
+                return request.build_absolute_uri(dog.dog_image.url)  # 절대 URL 반환
         return None
