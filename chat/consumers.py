@@ -30,11 +30,25 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
             opponent_email = await self.get_opponent_email(room, current_user_email)
 
             self.connected_users[group_name].add(current_user_email)
-
-            unread_count = await self.mark_unread_messages_as_read(room, current_user_email, opponent_email)
+            
+            unread_messages = await self.get_unread_messages(room, opponent_email)
 
             await self.accept()
+            print(f"읽지 않은 메시지 개수: {len(unread_messages)}")
+            print(unread_messages)
 
+            for msg in unread_messages:
+                print(f"보낸 메시지: {msg['message']}")
+                # 모든 참여자에게 메시지를 전송
+                await self.channel_layer.group_send(group_name, {
+                    'type': 'chat_message',
+                    'message': msg['message'],
+                    'sender_email': msg['sender_email'],
+                    'is_read': True  # 읽음 상태로 업데이트
+                })
+
+            # ✅ 3️⃣ 메시지를 읽음 처리 (update 실행)
+            await self.mark_messages_as_read(room, opponent_email)
         except Exception as e:
             await self.send_json({'error': f'연결 오류: {str(e)}'})
 
@@ -51,6 +65,7 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
 
         sender_email = content['sender_email']
         message = content.get("message", "")
+        image = content.get("image", None)
         if not message:
             raise ValueError("메시지가 비어 있습니다.")
 
@@ -69,18 +84,17 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
         
         group_name = self.get_group_name(self.room_id)
         opponent_email = await self.get_opponent_email(room, sender_email)
-        is_read = False
-        if group_name in self.connected_users:
-            if opponent_email in self.connected_users[group_name]:
-                is_read = True
+        is_read = opponent_email in self.connected_users[group_name]
 
-        await self.save_message(room, sender_email, message, is_read)
+        # 메시지 저장
+        await self.save_message(room, sender_email, message, is_read, image)
 
         await self.channel_layer.group_send(group_name, {
             'type': 'chat_message',
             'message': message,
             'sender_email': sender_email,
-            'is_read': is_read
+            'is_read': is_read,
+            'image_url': image.url if image else None
         })
 
         if not is_read:
@@ -145,10 +159,26 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
         return ChatRoom.objects.filter(id=room_id).exists()
 
     @database_sync_to_async
-    def mark_unread_messages_as_read(self, room, sender_email, opponent_email):
-        unread_messages = Message.objects.filter(room=room, sender__email=opponent_email, is_read=False)
-        unread_messages.update(is_read=True)
+    def get_unread_messages(self, room, opponent_email):
+        """
+        읽지 않은 메시지를 조회만 하는 함수 (update는 하지 않음)
+        """
+        unread_messages = list(Message.objects.filter(
+            room=room, sender__email=opponent_email, is_read=False
+        ))
 
+        messages_to_return = [
+            {"message": msg.text, "sender_email": msg.sender.email} for msg in unread_messages
+        ]
+
+        return messages_to_return
+    @database_sync_to_async
+    def mark_messages_as_read(self, room, opponent_email):
+        """
+        읽지 않은 메시지를 읽음 처리하는 함수
+        """
+        Message.objects.filter(room=room, sender__email=opponent_email, is_read=False).update(is_read=True) 
+    
     @database_sync_to_async
     def get_opponent_email(self, room, current_user_email):
         opponent = room.participants.exclude(email=current_user_email).first()
@@ -159,6 +189,11 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
     @database_sync_to_async
     def get_unread_messages_count(self, room, user_email):
         return Message.objects.filter(room=room, sender__email=user_email, is_read=False).count()
+    
+    @database_sync_to_async
+    def save_message(self, room, sender_email, message_text, is_read, image):
+        sender = User.objects.get(email=sender_email)
+        Message.objects.create(room=room, sender=sender, text=message_text, is_read=is_read, image=image)
 
 class UserChatConsumer(AsyncJsonWebsocketConsumer):
     async def connect(self):
