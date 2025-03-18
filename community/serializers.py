@@ -174,6 +174,11 @@ class CommentSerializer(serializers.ModelSerializer):
         if request and request.user.is_authenticated:
             return request.user == instance.writer
         return False
+    
+    user_email = serializers.SerializerMethodField(read_only=True)
+    def get_user_email(self, instance):
+        user = instance.writer
+        return user.email
 
     class Meta:
         model = Comment
@@ -185,7 +190,8 @@ class CommentSerializer(serializers.ModelSerializer):
             'profile_image',
             'is_writer',
             'created_at',
-            'updated_at'
+            'updated_at',
+            'user_email'
         ]
 
 class SearchHistorySerializer(serializers.ModelSerializer):
