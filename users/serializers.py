@@ -8,7 +8,7 @@ class AddDogSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = Dog
-        fields = ['represent','user','dog_name','dog_age','weight','neuter','blood','dog_image']
+        fields = ['id','represent','user','dog_name','dog_age','weight','gender','neuter','blood','dog_image','created_at','updated_at']
 
 class DogImageSerializer(serializers.ModelSerializer):
     """
