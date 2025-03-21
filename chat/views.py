@@ -99,6 +99,9 @@ class MessageListView(APIView):
             }
         }
 
+        if not messages.exists():
+            return Response({"user_info": user_info, "messages_by_date": []})
+        
         # 날짜별 메시지 그룹화
         grouped_messages = self.group_messages_by_date(messages, request)
         return Response({"user_info": user_info, "messages_by_date": grouped_messages})
