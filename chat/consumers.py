@@ -9,6 +9,8 @@ from django.db.models import Count, Q
 
 import re
 
+from channels.layers import get_channel_layer
+
 User = get_user_model()
 
 class ChatConsumer(AsyncJsonWebsocketConsumer):
@@ -34,7 +36,6 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
             unread_messages = await self.get_unread_messages(room, opponent_email)
 
             await self.accept()
-            print(f"읽지 않은 메시지 개수: {len(unread_messages)}")
             print(unread_messages)
 
             for msg in unread_messages:
@@ -106,7 +107,7 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
         if not is_read:
             unread_count = await self.get_unread_messages_count(room, opponent_email)
             # 여기서 UserChatConsumer로 업데이트 요청
-            user_group_name = f"user_{opponent_email.replace('@', '_').replace('.', '_')}"
+            user_group_name = re.sub(r'[^a-zA-Z0-9._-]', '_', f"user_{opponent_email}")
             await self.channel_layer.group_send(user_group_name, {
                 "type": "update_unread_count",
                 "room_id": self.room_id,
@@ -164,11 +165,6 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
     @database_sync_to_async
     def get_room_by_id(self, room_id):
         return ChatRoom.objects.get(id=room_id)
-
-    @database_sync_to_async
-    def save_message(self, room, sender_email, message_text, is_read):
-        sender = User.objects.get(email=sender_email)
-        Message.objects.create(room=room, sender=sender, text=message_text, is_read=is_read)
 
     @database_sync_to_async
     def check_room_exists(self, room_id):
