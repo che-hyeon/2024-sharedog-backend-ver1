@@ -1,7 +1,7 @@
 from rest_framework.decorators import action
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.response import Response
-from rest_framework import filters
+from rest_framework import filters, status
 from django.shortcuts import get_object_or_404, render
 from rest_framework import viewsets, mixins
 from .models import *
@@ -106,3 +106,18 @@ class SearchHistoryViewSet(viewsets.ModelViewSet):
         recent_searches = self.get_queryset()[:10]  # 최근 10개 검색 기록 반환
         serializer = self.get_serializer(recent_searches, many=True)
         return Response(serializer.data)
+    
+class NoticeViewSet(viewsets.ModelViewSet):
+    serializer_class = NoticeSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        return Notice.objects.all().order_by('-created_at')
+    
+    def create(self, request, *args, **kwargs):
+        if not request.user.is_superuser:  # 🔹 superuser인지 체크
+            return Response(
+                {"detail": "공지사항 생성 권한이 없습니다."}, 
+                status=status.HTTP_403_FORBIDDEN
+            )
+        return super().create(request, *args, **kwargs)
