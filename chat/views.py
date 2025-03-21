@@ -68,8 +68,6 @@ class MessageListView(APIView):
             return Response({'detail': 'room_id 파라미터가 필요합니다.'}, status=status.HTTP_400_BAD_REQUEST)
 
         messages = Message.objects.filter(room_id=room_id).order_by("timestamp")
-        if not messages.exists():
-            raise Http404('해당 room_id로 메시지를 찾을 수 없습니다.')
 
         # 현재 로그인한 사용자
         current_user = request.user
