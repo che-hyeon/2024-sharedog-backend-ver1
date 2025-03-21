@@ -5,6 +5,12 @@ from rest_framework.response import Response
 from accounts.models import Dog
 from accounts.serializers import DogSerializer
 
+
+class NoticeSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Notice
+        fields = '__all__'
+        
 class PostSerializer(serializers.ModelSerializer):
     class Meta:
         model = Post
