@@ -67,3 +67,9 @@ class SearchHistory(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='search_histories')
     keyword = models.CharField(max_length=255)
     searched_at = models.DateTimeField(auto_now_add=True)
+
+class Notice(models.Model):
+    id = models.AutoField(primary_key=True)
+    title = models.CharField(max_length=40)
+    content = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)

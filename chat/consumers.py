@@ -176,6 +176,8 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
 
     @database_sync_to_async
     def get_unread_messages(self, room, opponent_email):
+        if opponent_email is None:
+            return []
         """
         읽지 않은 메시지를 조회만 하는 함수 (update는 하지 않음)
         """
@@ -190,6 +192,8 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
         return messages_to_return
     @database_sync_to_async
     def mark_messages_as_read(self, room, opponent_email):
+        if opponent_email is None:
+            return
         """
         읽지 않은 메시지를 읽음 처리하는 함수
         """
