@@ -11,6 +11,7 @@ from django.utils.timezone import get_current_timezone
 from collections import defaultdict
 from rest_framework.views import APIView
 from django.db.models import Q
+from django.db.models import OuterRef, Subquery
 
 class ImmediateResponseException(Exception):
     def __init__(self, response):
@@ -24,7 +25,14 @@ class ChatRoomListCreateView(generics.ListCreateAPIView):
         user_email = self.request.user.email
         if not user_email:
             raise ValidationError({'detail': 'Email 파라미터가 필요합니다.'})  # ValidationError를 그대로 발생
-        return ChatRoom.objects.filter(participants__email=user_email)
+        
+        last_message_timestamp_subquery = Message.objects.filter(
+            room=OuterRef('id')
+        ).order_by('-timestamp').values('timestamp')[:1]
+        
+        return ChatRoom.objects.filter(participants__email=user_email).annotate(
+            last_message_timestamp=Subquery(last_message_timestamp_subquery)
+        ).order_by('-last_message_timestamp')
 
     def get_serializer_context(self):
         context = super().get_serializer_context()
