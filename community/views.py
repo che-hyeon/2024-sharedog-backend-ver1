@@ -28,6 +28,21 @@ class PostViewSet(viewsets.ModelViewSet):
     search_fields = ['title', 'content']
     filterset_fields = ['category', 'region', 'blood']
 
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        category = self.request.query_params.get('category')
+        region = self.request.query_params.get('region')
+        blood = self.request.query_params.get('blood')
+
+        if category:
+            queryset = queryset.filter(category=category)
+        if region:
+            queryset = queryset.filter(region=region)
+        if blood:
+            queryset = queryset.filter(blood=blood)
+
+        return queryset
+
     def create(self, request):
         serializer = self.get_serializer(data=request.data)
         try:
