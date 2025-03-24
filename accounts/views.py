@@ -226,6 +226,8 @@ class KakaoLogin(SocialLoginView):
         
         # 소셜 로그인 처리 후 유저 정보 가져오기
         user = self.request.user
+
+        created = not User.objects.filter(email=user.email).exists()
         
         # JWT 토큰 생성
         token = TokenObtainPairSerializer.get_token(user)
@@ -234,6 +236,7 @@ class KakaoLogin(SocialLoginView):
 
         # 토큰 포함한 응답 반환
         response.data.update({
+            "is_signed": created,
             "token": {
                 "access": access_token,
                 "refresh": refresh_token,
