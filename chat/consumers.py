@@ -260,10 +260,18 @@ class UserChatConsumer(AsyncJsonWebsocketConsumer):
             unread_count = await database_sync_to_async(
                 lambda: Message.objects.filter(room=room, is_read=False).exclude(sender__email=user_email).count()
             )()
+
+            latest_message = await database_sync_to_async(
+                lambda: Message.objects.filter(room=room).order_by('-timestamp').first()
+            )()
+            
+            last_message_text = latest_message.text if latest_message else ""
+
             chatrooms_info.append({
                 "room_id": room.id,
                 "opponant_name": opponant_name,
-                "unread_messages": unread_count
+                "unread_messages": unread_count,
+                "last_message": last_message_text,
             })
 
         return chatrooms_info
@@ -277,11 +285,6 @@ class UserChatConsumer(AsyncJsonWebsocketConsumer):
         for room in chatrooms:
             if room["room_id"] == int(room_id):
                 room["unread_messages"] = unread_messages
-
-        await self.send_json({
-            "type": "chatrooms_list",
-            "chatrooms": chatrooms
-        })
 
     async def update_chatrooms(self, event):
         """ 채팅방 리스트를 즉시 갱신 """
