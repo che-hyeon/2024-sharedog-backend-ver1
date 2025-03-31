@@ -3,12 +3,13 @@ import os, requests, environ, jwt
 from pathlib import Path
 
 from rest_framework.permissions import AllowAny
-
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.decorators import api_view, permission_classes
 from django.http import JsonResponse
 from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated
 from rest_framework import viewsets, mixins, status
+from rest_framework.viewsets import ViewSet
 from .serializers import *
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer, TokenRefreshSerializer
@@ -352,3 +353,12 @@ class EmailVerifyConfirmView(APIView):
         client.delete(email)
 
         return Response({"detail": "Email verification successful", "correct": True}, status=status.HTTP_200_OK)
+    
+class MypageViewSet(ViewSet):
+    permission_classes = [IsAuthenticated]
+
+    def list(self, request):
+        user = request.user  # 현재 로그인된 사용자
+        context = {'request': request}
+        serializer = MypageSerializer(instance=user, context=context)
+        return Response(serializer.data)
