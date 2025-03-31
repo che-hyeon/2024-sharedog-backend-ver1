@@ -12,6 +12,9 @@ app_name = "accounts"
 dog_router = routers.SimpleRouter(trailing_slash=False)
 dog_router.register('dog', DogViewSet, basename='dog')
 
+user_router = routers.SimpleRouter(trailing_slash=False)
+user_router.register('user-check', MypageViewSet, basename='user-check')
+
 urlpatterns = [
     path("signup", RegisterAPIView.as_view(), name="signup"),  # 회원가입
     path("login", LoginAPIView.as_view(), name="login"),       # 로그인
@@ -26,5 +29,6 @@ urlpatterns = [
     path("check-email", CheckEmailExistsView.as_view(), name="check_email"),
     path('verify-email', EmailVerifyView.as_view(), name='verify_email'),
     path('verify-code', EmailVerifyConfirmView.as_view(), name='verify_code'),
-    path('reset-password', ResetPasswordAPIView.as_view(), name='reset_password')
+    path('reset-password', ResetPasswordAPIView.as_view(), name='reset_password'),
+    path('', include(user_router.urls))
 ]

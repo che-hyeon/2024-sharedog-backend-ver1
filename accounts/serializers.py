@@ -15,6 +15,31 @@ class UserSerializer(serializers.ModelSerializer):
         user.save()
         return user
     
+class MypageSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ['email', 'user_name', 'profile_image']
+
+    profile_image = serializers.SerializerMethodField(read_only=True)
+    def get_profile_image(self, instance):
+        request = self.context.get('request', None)
+        
+        user = request.user  # JWT 인증을 통해 설정된 현재 사용자
+        # 현재 사용자의 대표 Dog 객체를 가져오기
+        dog = Dog.objects.filter(user=user, represent=True).first()
+        
+        if dog:
+            # DogSerializer에 context 전달 후 dog_image 반환
+            return DogSerializer(dog, context=self.context).data.get('dog_image', None)
+        
+        return None
+    
+    user_name = serializers.SerializerMethodField(read_only=True)
+    def get_user_name(self, instance):
+        request = self.context.get('request', None)
+
+        return request.user.user_name
+
 class DogSerializer(serializers.ModelSerializer):
     class Meta:
         model = Dog
