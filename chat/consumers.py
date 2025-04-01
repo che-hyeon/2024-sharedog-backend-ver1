@@ -252,29 +252,35 @@ class UserChatConsumer(AsyncJsonWebsocketConsumer):
             )
 
     async def get_chatrooms_with_unread_messages(self, user_email):
-        rooms = await database_sync_to_async(lambda: list(ChatRoom.objects.filter(participants__email=user_email)))()
-
-        chatrooms_info = []
-        for room in rooms:
-            opponant_name = await database_sync_to_async(room.get_other_participant_name)(self.scope["user"])
-            unread_count = await database_sync_to_async(
-                lambda: Message.objects.filter(room=room, is_read=False).exclude(sender__email=user_email).count()
+        try:
+            rooms = await database_sync_to_async(
+                lambda: list(ChatRoom.objects.filter(participants__email=user_email))
             )()
 
-            latest_message = await database_sync_to_async(
-                lambda: Message.objects.filter(room=room).order_by('-timestamp').first()
-            )()
-            
-            last_message_text = latest_message.text if latest_message else ""
+            chatrooms_info = []
+            for room in rooms:
+                opponent_name = await database_sync_to_async(room.get_other_participant_name)(self.scope["user"])
+                unread_count = await database_sync_to_async(
+                    lambda: Message.objects.filter(room=room, is_read=False).exclude(sender__email=user_email).count()
+                )()
 
-            chatrooms_info.append({
-                "room_id": room.id,
-                "opponant_name": opponant_name,
-                "unread_messages": unread_count,
-                "last_message": last_message_text,
-            })
+                latest_message = await database_sync_to_async(
+                    lambda: Message.objects.filter(room=room).order_by('-timestamp').first()
+                )()
 
-        return chatrooms_info
+                last_message_text = latest_message.text if latest_message else ""
+
+                chatrooms_info.append({
+                    "room_id": room.id,
+                    "opponent_name": opponent_name,
+                    "unread_messages": unread_count,
+                    "last_message": last_message_text,
+                })
+
+            return chatrooms_info
+        except Exception as e:
+            print(f"Error in get_chatrooms_with_unread_messages: {e}")
+            return []
 
     async def update_unread_count(self, event):
         room_id = event['room_id']
