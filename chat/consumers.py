@@ -296,6 +296,7 @@ class UserChatConsumer(AsyncJsonWebsocketConsumer):
                     lambda: Message.objects.filter(room=room).order_by("-timestamp").first()
                 )()
                 last_message_text = latest_message.text if latest_message else ""
+                latest_message_timestamp = latest_message.timestamp if latest_message else datetime.min  # 정렬용
 
                 # 최근 메시지의 시간 포맷 변환 (오전/오후 hh:mm)
                 latest_message_time = ""
@@ -331,7 +332,14 @@ class UserChatConsumer(AsyncJsonWebsocketConsumer):
                     "latest_message_time": latest_message_time,
                     "is_promise": is_promise,  # 필요에 따라 값 설정
                     "participants": list(await database_sync_to_async(lambda: list(room.participants.values_list("id", flat=True)))()),
+                    "latest_message_timestamp": latest_message_timestamp  # 정렬을 위해 추가
                 })
+            
+            chatrooms_info.sort(key=lambda x: x["latest_message_timestamp"], reverse=True)
+
+            # 정렬용 필드 제거 후 반환
+            for chat in chatrooms_info:
+                del chat["latest_message_timestamp"]
             return chatrooms_info
         except Exception as e:
             print(f"Error in get_chatrooms_with_unread_messages: {e}")
