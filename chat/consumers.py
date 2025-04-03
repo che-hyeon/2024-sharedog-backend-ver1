@@ -213,19 +213,22 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
 
 class UserChatConsumer(AsyncJsonWebsocketConsumer):
     async def connect(self):
-        self.user_email = self.scope["user"].email
-        self.group_name = re.sub(r'[^a-zA-Z0-9._-]', '_', f"user_{self.user_email}")
+        try:
+            self.user_email = self.scope["user"].email
+            self.group_name = re.sub(r'[^a-zA-Z0-9._-]', '_', f"user_{self.user_email}")
 
-        await self.channel_layer.group_add(self.group_name, self.channel_name)
+            await self.channel_layer.group_add(self.group_name, self.channel_name)
 
-        chatrooms = await self.get_chatrooms_with_unread_messages(self.user_email)
+            chatrooms = await self.get_chatrooms_with_unread_messages(self.user_email)
 
-        await self.accept()
+            await self.accept()
 
-        await self.send_json({
-            "type": "chatrooms_list",
-            "chatrooms": chatrooms
-        })
+            await self.send_json({
+                "type": "chatrooms_list",
+                "chatrooms": chatrooms
+            })
+        except Exception as e:
+            await self.send_json({'error': f'연결 오류: {str(e)}'})
 
     async def disconnect(self, close_code):
         await self.channel_layer.group_discard(self.group_name, self.channel_name)
