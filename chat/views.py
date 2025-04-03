@@ -95,8 +95,8 @@ class MessageListView(APIView):
         else:
             opponent_dog = None 
         
-        if opponent_dog:
-            dog_image = opponent_dog.dog_image
+        if opponent_dog and opponent_dog.dog_image:
+            dog_image = request.build_absolute_uri(opponent_dog.dog_image.url)
         else:
             dog_image = None  # 또는 기본 이미지 설정
         unread_messages = messages.filter(sender=opponent, is_read=False)
