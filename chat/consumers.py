@@ -5,7 +5,12 @@ from django.contrib.auth import get_user_model
 from .models import ChatRoom, Message
 from .serializers import ChatRoomSerializer
 
+from accounts.models import Dog
+
 from django.db.models import Count, Q
+
+from datetime import datetime, timedelta
+from django.utils.timezone import get_current_timezone
 
 import re
 
@@ -262,24 +267,71 @@ class UserChatConsumer(AsyncJsonWebsocketConsumer):
 
             chatrooms_info = []
             for room in rooms:
-                opponent_name = await database_sync_to_async(room.get_other_participant_name)(self.scope["user"])
+                opponent = await database_sync_to_async(
+                lambda: room.participants.exclude(email=user_email).first()
+                )()
+
+                opponent_name = opponent.user_name if opponent else "알 수 없음"
+                opponent_email = opponent.email if opponent else "알 수 없음"
+
+                # 상대방의 대표 강아지 프로필 이미지 가져오기
+                opponent_dog = await database_sync_to_async(
+                    lambda: Dog.objects.filter(user=opponent, represent=True).first()
+                )()
+                opponent_profile = (
+                    opponent_dog.dog_image.url
+                    if opponent_dog and opponent_dog.dog_image
+                    else None
+                )
+
+                # 안 읽은 메시지 개수 가져오기
                 unread_count = await database_sync_to_async(
-                    lambda: Message.objects.filter(room=room, is_read=False).exclude(sender__email=user_email).count()
+                    lambda: Message.objects.filter(room=room, is_read=False)
+                    .exclude(sender__email=user_email)
+                    .count()
                 )()
 
+                # 최근 메시지 가져오기
                 latest_message = await database_sync_to_async(
-                    lambda: Message.objects.filter(room=room).order_by('-timestamp').first()
+                    lambda: Message.objects.filter(room=room).order_by("-timestamp").first()
                 )()
-
                 last_message_text = latest_message.text if latest_message else ""
 
-                chatrooms_info.append({
-                    "room_id": room.id,
-                    "opponent_name": opponent_name,
-                    "unread_messages": unread_count,
-                    "last_message": last_message_text,
-                })
+                # 최근 메시지의 시간 포맷 변환 (오전/오후 hh:mm)
+                latest_message_time = ""
+                if latest_message:
+                    tz = get_current_timezone()  # 현재 설정된 타임존 가져오기
+                    message_time = latest_message.timestamp.astimezone(tz)  # 서버 타임존에서 현재 타임존으로 변환
+                    now = datetime.now(tz)  # 현재 시간 가져오기 (타임존 적용)
 
+                    if message_time.date() == now.date():
+                        period = "오전" if message_time.hour < 12 else "오후"
+                        formatted_hour = message_time.hour if message_time.hour == 12 or message_time.hour == 0 else message_time.hour % 12
+                        latest_message_time = f"{period} {formatted_hour}:{message_time.minute:02d}"
+
+                    elif message_time.date() == (now - timedelta(days=1)).date():
+                        latest_message_time = "어제"
+
+                    elif message_time.year == now.year:
+                        latest_message_time = message_time.strftime("%m월 %d일")
+
+                    else:
+                        latest_message_time = message_time.strftime("%Y.%m.%d")
+
+                is_promise = latest_message.promise if latest_message else False
+
+                chatrooms_info.append({
+                    "id": room.id,
+                    "room_id": room.id,
+                    "opponent_user": opponent_name,
+                    "opponent_email": opponent_email,
+                    "opponent_user_profile": opponent_profile,
+                    "unread_messages": unread_count,
+                    "latest_message": last_message_text,
+                    "latest_message_time": latest_message_time,
+                    "is_promise": is_promise,  # 필요에 따라 값 설정
+                    "participants": list(await database_sync_to_async(lambda: list(room.participants.values_list("id", flat=True)))()),
+                })
             return chatrooms_info
         except Exception as e:
             print(f"Error in get_chatrooms_with_unread_messages: {e}")
