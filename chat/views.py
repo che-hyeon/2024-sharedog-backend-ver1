@@ -13,6 +13,8 @@ from rest_framework.views import APIView
 from django.db.models import Q
 from django.db.models import OuterRef, Subquery
 
+from accounts.models import Dog
+
 class ImmediateResponseException(Exception):
     def __init__(self, response):
         self.response = response
@@ -88,6 +90,15 @@ class MessageListView(APIView):
 
         # 상대방 정보 가져오기
         opponent = chat_room.participants.exclude(id=current_user.id).first()
+        if opponent:
+            opponent_dog = Dog.objects.filter(user=opponent, represent=True).first()
+        else:
+            opponent_dog = None 
+        
+        if opponent_dog:
+            dog_image = opponent_dog.dog_image
+        else:
+            dog_image = None  # 또는 기본 이미지 설정
         unread_messages = messages.filter(sender=opponent, is_read=False)
         unread_messages.update(is_read=True)
 
@@ -101,7 +112,8 @@ class MessageListView(APIView):
             "opponent": {
                 "user_id": opponent.id,
                 "email": opponent.email,
-                "name": opponent.user_name
+                "name": opponent.user_name,
+                "profile_image": dog_image
             }
         }
 
