@@ -11,6 +11,7 @@ class MainPostSerializer(serializers.ModelSerializer):
             'id',
             'title',
             'content',
+            'writer',
             'image_1',
             'category',
             'region',
@@ -34,6 +35,10 @@ class MainPostSerializer(serializers.ModelSerializer):
             return f"{int(time_difference.total_seconds() // 3600)}시간 전"
         else:
             return f"{time_difference.days}일 전"
+    
+    writer = serializers.SerializerMethodField(read_only=True)
+    def get_writer(self, instance):
+        return instance.writer.user_name
 
 class MainSerializer(serializers.ModelSerializer):
     class Meta:
