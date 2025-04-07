@@ -1,6 +1,7 @@
-from rest_framework import viewsets
+from rest_framework import viewsets, mixins
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
+from rest_framework.viewsets import ViewSet
 from accounts.models import Dog,User
 from .serializers import AddDogSerializer, MyPageSerializer, MyPromiseSerializer
 from rest_framework.viewsets import ReadOnlyModelViewSet
@@ -53,16 +54,19 @@ class MyPageViewSet(ReadOnlyModelViewSet):
         """
         return User.objects.filter(id=self.request.user.id)
 
-class MyPostViewSet(ReadOnlyModelViewSet):
+class MyPostViewSet(viewsets.GenericViewSet, mixins.ListModelMixin):
     serializer_class = MyPostSerializer
+    permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        return Post.objects.filter(writer=self.request.user)
+        user = self.request.user
+        return Post.objects.filter(writer=user)
 
-class MyPromiseViewSet(ReadOnlyModelViewSet):
+class MyPromiseViewSet(viewsets.GenericViewSet, mixins.ListModelMixin):
     """
     현재 로그인한 사용자의 약속 목록을 조회하는 뷰셋
     """
+    permission_classes = [IsAuthenticated]
     serializer_class = MyPromiseSerializer
 
     def get_queryset(self):
