@@ -36,7 +36,6 @@ class MyPageSerializer(serializers.ModelSerializer):
         return DogImageSerializer(represent_dogs, many=True, context=self.context).data
 
 class MyPostSerializer(serializers.ModelSerializer):
-    writer = serializers.CharField(source='writer.user_name',read_only=True)
 
     class Meta:
         model = Post
