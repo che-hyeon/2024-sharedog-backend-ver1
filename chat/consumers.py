@@ -296,7 +296,7 @@ class UserChatConsumer(AsyncJsonWebsocketConsumer):
                     lambda: Message.objects.filter(room=room).order_by("-timestamp").first()
                 )()
                 last_message_text = latest_message.text if latest_message else ""
-                latest_message_timestamp = latest_message.timestamp if latest_message else datetime.min  # 정렬용
+                latest_message_timestamp = latest_message.timestamp if latest_message else None
 
                 # 최근 메시지의 시간 포맷 변환 (오전/오후 hh:mm)
                 latest_message_time = ""
