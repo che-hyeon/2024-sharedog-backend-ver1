@@ -332,14 +332,11 @@ class UserChatConsumer(AsyncJsonWebsocketConsumer):
                     "latest_message_time": latest_message_time,
                     "is_promise": is_promise,  # 필요에 따라 값 설정
                     "participants": list(await database_sync_to_async(lambda: list(room.participants.values_list("id", flat=True)))()),
-                    "latest_message_timestamp": latest_message_timestamp  # 정렬을 위해 추가
+                    "latest_message_timestamp": latest_message_timestamp.isoformat() if latest_message_timestamp else None  # 정렬을 위해 추가
                 })
             
             chatrooms_info.sort(key=lambda x: x["latest_message_timestamp"], reverse=True)
 
-            # 정렬용 필드 제거 후 반환
-            for chat in chatrooms_info:
-                del chat["latest_message_timestamp"]
             return chatrooms_info
         except Exception as e:
             print(f"Error in get_chatrooms_with_unread_messages: {e}")
