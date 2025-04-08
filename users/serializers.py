@@ -45,8 +45,8 @@ class MyPromiseSerializer(serializers.ModelSerializer):
     """
     현재 사용자의 약속(Promise) 데이터를 직렬화하는 시리얼라이저
     """
-    other_user = serializers.SerializerMethodField()
-    other_user_image = serializers.SerializerMethodField()
+    other_user = serializers.SerializerMethodField(read_only=True)
+    other_user_image = serializers.SerializerMethodField(read_only=True)
 
     class Meta:
         model = Promise
