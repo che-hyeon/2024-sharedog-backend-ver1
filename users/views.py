@@ -74,4 +74,7 @@ class MyPromiseViewSet(viewsets.GenericViewSet, mixins.ListModelMixin):
         현재 로그인한 사용자가 user1 또는 user2인 약속을 가져옴
         """
         user = self.request.user
+
+        if not user.is_authenticated:
+            return Response({'detail': 'Authentication credentials were not provided.'}, status=401)
         return Promise.objects.filter(Q(user1=user) | Q(user2=user))
