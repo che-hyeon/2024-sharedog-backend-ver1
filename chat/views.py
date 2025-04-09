@@ -141,7 +141,6 @@ class MessageListView(APIView):
 
 
 class PromiseViewSet(viewsets.ModelViewSet):
-    queryset = Promise.objects.all()
     serializer_class = PromiseSerializer
     permission_classes = [IsAuthenticated]
 
