@@ -76,5 +76,7 @@ class MyPromiseViewSet(viewsets.GenericViewSet, mixins.ListModelMixin):
         user = self.request.user
 
         if not user.is_authenticated:
-            return Response({'detail': 'Authentication credentials were not provided.'}, status=401)
+            # 빈 QuerySet 반환
+            return Promise.objects.none()
+        
         return Promise.objects.filter(Q(user1=user) | Q(user2=user))
