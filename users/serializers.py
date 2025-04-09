@@ -3,6 +3,7 @@ from rest_framework import serializers
 from accounts.models import User, Dog
 from community.models import Post
 from chat.models import Promise
+from accounts.serializers import DogSerializer
 class AddDogSerializer(serializers.ModelSerializer):
     user = serializers.CharField(source='user.user_name', read_only=True)
     
@@ -57,7 +58,7 @@ class MyPromiseSerializer(serializers.ModelSerializer):
         """
         현재 로그인한 사용자가 user1이면 user2의 이름, user2이면 user1의 이름 반환
         """
-        request = self.context['request']
+        request = self.context.get('request', None)
         if request and request.user:
             if request.user.is_authenticated:
                 if obj.user1 == request.user:
@@ -70,7 +71,7 @@ class MyPromiseSerializer(serializers.ModelSerializer):
         """
         상대방의 대표 강아지 사진을 반환 (대표 강아지가 없으면 첫 번째 강아지)
         """
-        request = self.context.get('request')
+        request = self.context.get('request', None)
         if request and request.user:
             if request.user.is_authenticated:
                 other_user = obj.user2 if obj.user1 == request.user else obj.user1  # 상대방 찾기
@@ -78,10 +79,7 @@ class MyPromiseSerializer(serializers.ModelSerializer):
             # 1️⃣ 대표 강아지가 있으면 대표 강아지 사진 반환
                 dog = Dog.objects.filter(user=other_user, represent=True).first()
 
-            # 2️⃣ 대표 강아지가 없으면 첫 번째 강아지 사진 반환
-                if not dog:
-                    dog = Dog.objects.filter(user=other_user).first()
-
-                if dog and dog.dog_image:
-                    return request.build_absolute_uri(dog.dog_image.url)  # 절대 URL 반환
+                if dog:
+                    # DogSerializer에 context 전달 후 dog_image 반환
+                    return DogSerializer(dog, context=self.context).data.get('dog_image', None)
         return None
