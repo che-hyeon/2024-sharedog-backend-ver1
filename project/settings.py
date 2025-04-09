@@ -265,7 +265,4 @@ CORS_ALLOWED_ORIGINS = [
     'https://localhost:5173',
     'https://127.0.0.1:3000',
     'https://127.0.0.1:5173',
-
-    "wss://sharedog.shop",  # WebSocket 허용
-    "ws://sharedog.shop",
 ]
