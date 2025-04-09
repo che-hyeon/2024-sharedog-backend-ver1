@@ -259,10 +259,30 @@ CORS_ALLOWED_ORIGINS = [
 
     # 프론트엔드 도메인 또는 IP 주소
     'https://2024-sharedog-frontend.vercel.app',
-    'http://프론트주소:포트번호',
 
     'https://localhost:3000',
     'https://localhost:5173',
     'https://127.0.0.1:3000',
     'https://127.0.0.1:5173',
+]
+
+CORS_ALLOW_METHODS = [
+    "GET",
+    "POST",
+    "PUT",
+    "PATCH",
+    "DELETE",
+    "OPTIONS",
+]
+
+CORS_ALLOW_HEADERS = [
+    "accept",
+    "accept-encoding",
+    "authorization",
+    "content-type",
+    "dnt",
+    "origin",
+    "user-agent",
+    "x-csrftoken",
+    "x-requested-with",
 ]
