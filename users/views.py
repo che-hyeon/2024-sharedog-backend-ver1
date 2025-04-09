@@ -62,21 +62,17 @@ class MyPostViewSet(viewsets.GenericViewSet, mixins.ListModelMixin):
         user = self.request.user
         return Post.objects.filter(writer=user)
 
-class MyPromiseViewSet(viewsets.GenericViewSet, mixins.ListModelMixin):
-    """
-    현재 로그인한 사용자의 약속 목록을 조회하는 뷰셋
-    """
+    
+class MyPromiseViewSet(ViewSet):
     permission_classes = [IsAuthenticated]
-    serializer_class = MyPromiseSerializer
 
-    def get_queryset(self):
-        """
-        현재 로그인한 사용자가 user1 또는 user2인 약속을 가져옴
-        """
-        user = self.request.user
-
-        if not user.is_authenticated:
-            # 빈 QuerySet 반환
-            return Promise.objects.none()
+    def list(self, request):
+        user = request.user
+        context = {'request': request}
         
-        return Promise.objects.filter(Q(user1=user) | Q(user2=user))
+        # user1 또는 user2가 현재 user인 Promise만 필터링
+        promises = Promise.objects.filter(user1=user) | Promise.objects.filter(user2=user)
+
+        # 여러 개 객체를 serialize할 때는 many=True 필요
+        serializer = MyPromiseSerializer(promises, many=True, context=context)
+        return Response(serializer.data)

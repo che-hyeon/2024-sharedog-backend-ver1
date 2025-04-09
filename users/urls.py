@@ -12,7 +12,11 @@ router = DefaultRouter()
 router.register('dogs', AddDogViewSet, basename='dog')
 router.register('mypage', MyPageViewSet, basename='mypage')
 router.register('mypost', MyPostViewSet, basename='mypost')
-router.register('mypromise',MyPromiseViewSet, basename='mypromise')
+
+my_promise_router = routers.SimpleRouter(trailing_slash=False)
+my_promise_router.register('my-promise', MyPromiseViewSet, basename='my-promise')
+
 urlpatterns = [
     path('', include(router.urls)),  # 라우터 URL 포함
+    path('', include(my_promise_router.urls))
 ]
