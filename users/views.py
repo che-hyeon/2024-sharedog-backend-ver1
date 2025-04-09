@@ -71,7 +71,7 @@ class MyPromiseViewSet(ViewSet):
         context = {'request': request}
         
         # user1 또는 user2가 현재 user인 Promise만 필터링
-        promises = Promise.objects.filter(user1=user) | Promise.objects.filter(user2=user)
+        promises = Promise.objects.filter(Q(user1=user) | Q(user2=user)).order_by('-created_at')
 
         # 여러 개 객체를 serialize할 때는 many=True 필요
         serializer = MyPromiseSerializer(promises, many=True, context=context)
