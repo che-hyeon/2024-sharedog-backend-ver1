@@ -1,5 +1,8 @@
 from django.db import models
 from accounts.models import User
+from PIL import Image
+from io import BytesIO
+from django.core.files.base import ContentFile
 
 # Create your models here.
 def image_upload_path(instance, filename):
@@ -53,6 +56,33 @@ class Post(models.Model):
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    def save(self, *args, **kwargs):
+        # 먼저 부모 save() 호출해서 id(pk)를 확보
+        super().save(*args, **kwargs)
+
+        for image_field in ['image_1', 'image_2', 'image_3']:
+            img = getattr(self, image_field)
+            if img:
+                self.compress_image(img, image_field)
+    
+    def compress_image(self, image_field_file, image_field_name):
+        img = Image.open(image_field_file)
+        
+        # Pillow는 RGB 모드만 JPEG 저장 가능
+        if img.mode != 'RGB':
+            img = img.convert('RGB')
+
+        output = BytesIO()
+        img.save(output, format='JPEG', quality=70)  # quality 낮추면 용량 줄어듦
+        output.seek(0)
+
+        # 새 이미지로 교체
+        compressed_image = ContentFile(output.read(), name=image_field_file.name)
+        setattr(self, image_field_name, compressed_image)
+
+        # 다시 save (업데이트)
+        super().save(update_fields=[image_field_name])
+
 
 class Comment(models.Model):
     id = models.AutoField(primary_key=True)
