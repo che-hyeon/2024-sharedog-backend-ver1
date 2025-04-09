@@ -14,7 +14,7 @@ router.register('mypage', MyPageViewSet, basename='mypage')
 router.register('mypost', MyPostViewSet, basename='mypost')
 
 my_promise_router = routers.SimpleRouter(trailing_slash=False)
-my_promise_router.register('my-promise', MyPromiseViewSet, basename='my-promise')
+my_promise_router.register('mypromise', MyPromiseViewSet, basename='mypromise')
 
 urlpatterns = [
     path('', include(router.urls)),  # 라우터 URL 포함
