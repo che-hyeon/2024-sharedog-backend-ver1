@@ -346,7 +346,7 @@ class UserChatConsumer(AsyncJsonWebsocketConsumer):
                     "participants": list(await database_sync_to_async(lambda: list(room.participants.values_list("id", flat=True)))()),
                     "latest_message_timestamp": latest_message_timestamp.isoformat() if latest_message_timestamp else None  # 정렬을 위해 추가
                 })
-            chatrooms_info.sort(key=lambda x: safe_datetime(x["latest_message_timestamp"]), reverse=True)
+            chatrooms_info.sort(key=lambda x: safe_datetime(x.get("latest_message_timestamp")), reverse=True)
             chatrooms_info.sort(key=lambda x: x["latest_message_timestamp"] or datetime.min, reverse=True)
 
             return chatrooms_info
