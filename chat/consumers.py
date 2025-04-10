@@ -293,14 +293,14 @@ class UserChatConsumer(AsyncJsonWebsocketConsumer):
 
                 # 최근 메시지 가져오기
                 latest_message = await database_sync_to_async(
-                    lambda: Message.objects.filter(room=room).order_by("-timestamp").first()
+                    lambda: Message.objects.filter(room=room, timestamp__isnull=False).order_by("-timestamp").first()
                 )()
                 last_message_text = latest_message.text if latest_message else ""
                 latest_message_timestamp = latest_message.timestamp if latest_message else None
 
                 # 최근 메시지의 시간 포맷 변환 (오전/오후 hh:mm)
                 latest_message_time = ""
-                if latest_message:
+                if latest_message and latest_message.timestamp:
                     tz = get_current_timezone()  # 현재 설정된 타임존 가져오기
                     message_time = latest_message.timestamp.astimezone(tz)  # 서버 타임존에서 현재 타임존으로 변환
                     now = datetime.now(tz)  # 현재 시간 가져오기 (타임존 적용)
