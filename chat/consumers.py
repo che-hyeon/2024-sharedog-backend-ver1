@@ -302,7 +302,7 @@ class UserChatConsumer(AsyncJsonWebsocketConsumer):
                 # 최근 메시지의 시간 포맷 변환 (오전/오후 hh:mm)
                 latest_message_time = ""
                 if latest_message and latest_message.timestamp:
-                    tz = await sync_to_async(get_current_timezone)()  # 현재 설정된 타임존 가져오기
+                    tz = await sync_to_async(get_current_timezone, thread_sensitive=False)()  # 현재 설정된 타임존 가져오기
                     message_time = latest_message.timestamp.astimezone(tz)  # 서버 타임존에서 현재 타임존으로 변환
                     now = datetime.now(tz)  # 현재 시간 가져오기 (타임존 적용)
 
@@ -319,6 +319,8 @@ class UserChatConsumer(AsyncJsonWebsocketConsumer):
 
                     else:
                         latest_message_time = message_time.strftime("%Y.%m.%d")
+                else:
+                    latest_message_time = ""
 
                 is_promise = latest_message.promise if latest_message else False
 
