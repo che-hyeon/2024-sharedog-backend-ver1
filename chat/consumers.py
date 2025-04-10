@@ -338,7 +338,7 @@ class UserChatConsumer(AsyncJsonWebsocketConsumer):
                     "latest_message_timestamp": latest_message_timestamp.isoformat() if latest_message_timestamp else None  # 정렬을 위해 추가
                 })
             
-            chatrooms_info.sort(key=lambda x: x["latest_message_timestamp"], reverse=True)
+            chatrooms_info.sort(key=lambda x: x["latest_message_timestamp"] or datetime.min, reverse=True)
 
             return chatrooms_info
         except Exception as e:
