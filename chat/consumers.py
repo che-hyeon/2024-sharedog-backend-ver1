@@ -217,6 +217,15 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
         sender = User.objects.get(email=sender_email)
         Message.objects.create(room=room, sender=sender, text=message_text, is_read=is_read, image=image)
 
+def safe_datetime(val):
+    if isinstance(val, datetime):
+        return val
+    try:
+        return datetime.fromisoformat(val)
+    except:
+        return datetime.min
+
+
 class UserChatConsumer(AsyncJsonWebsocketConsumer):
     async def connect(self):
         try:
@@ -337,7 +346,7 @@ class UserChatConsumer(AsyncJsonWebsocketConsumer):
                     "participants": list(await database_sync_to_async(lambda: list(room.participants.values_list("id", flat=True)))()),
                     "latest_message_timestamp": latest_message_timestamp.isoformat() if latest_message_timestamp else None  # 정렬을 위해 추가
                 })
-            
+            chatrooms_info.sort(key=lambda x: safe_datetime(x["latest_message_timestamp"]), reverse=True)
             chatrooms_info.sort(key=lambda x: x["latest_message_timestamp"] or datetime.min, reverse=True)
 
             return chatrooms_info
