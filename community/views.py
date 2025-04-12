@@ -122,6 +122,11 @@ class SearchHistoryViewSet(viewsets.ModelViewSet):
         serializer = self.get_serializer(recent_searches, many=True)
         return Response(serializer.data)
     
+    @action(detail=False, methods=['delete'])
+    def alldelete(self, request):
+        self.get_queryset().delete()
+        return Response({"message": "검색 기록이 모두 삭제되었습니다."}, status=status.HTTP_204_NO_CONTENT)
+    
 class NoticeViewSet(viewsets.ModelViewSet):
     serializer_class = NoticeSerializer
     permission_classes = [IsAuthenticated]
